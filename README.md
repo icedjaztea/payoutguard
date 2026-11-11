@@ -64,11 +64,30 @@ curl -s -X POST $BASE/api/runs/$RID/audit | python -m json.tool          # 8 ver
 curl -s -X POST "$BASE/api/runs/$RID/approve?dry_run=true"               # inspect the Payouts body
 curl -s -X POST $BASE/api/runs/$RID/approve                              # sends ONE real sandbox batch
 curl -s "$BASE/api/runs/$RID?refresh=1"                                  # re-poll item statuses
+curl -s -X POST "$BASE/api/runs/$RID/appeals/scan_0042.pdf?dry_run=true"  # appeal decision only
+curl -s -X POST $BASE/api/runs/$RID/appeals/scan_0042.pdf                # TOP_UP -> second batch
 curl -s -X POST $BASE/api/reset                                          # new run, new sender_batch_id
 ```
+
+### Appeal loop
+
+`POST /api/runs/{id}/appeals/{invoice-file}` re-checks a `SHORT_PAY` invoice against the contractor's reply in
+`data/appeals/` (matched by contractor name, or name one with `?appeal_file=`). On `TOP_UP` it sends a second,
+one-item Payouts batch for the withheld amount — capped at what was actually withheld — and the run's
+`totals.protected` drops accordingly. `?dry_run=true` decides without sending. The run must have been approved
+first, and a topped-up invoice cannot be appealed twice.
+
+### Webhooks
+
+`POST /webhooks/paypal` takes `PAYMENT.PAYOUTSBATCH.*` and `PAYMENT.PAYOUTS-ITEM.*` events and updates the stored
+item/batch status for the main batch and any top-up batch. Register the URL at Developer Dashboard > your sandbox
+app > Features > Sandbox Webhooks and put the webhook id in `PAYPAL_WEBHOOK_ID`: every event is then verified with
+`/v1/notifications/verify-webhook-signature` and a failure changes nothing. Without that id an event cannot be
+verified and is refused with 400 unless `PAYPAL_ALLOW_UNVERIFIED_WEBHOOKS=1` is set for local testing.
+`GET /api/runs/{id}?refresh=1` is the poll fallback.
 
 ### Tests
 
 ```bash
-pytest -q        # guardrails + Payouts request body, no network
+pytest -q        # guardrails, Payouts body, appeal loop, webhooks — no network
 ```

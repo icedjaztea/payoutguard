@@ -371,14 +371,88 @@ def audit_file(path: Path, provider: Optional[Provider] = None, *, use_guardrail
     return audit
 
 
+def appeals_dir_files() -> List[Path]:
+    d = DATA / "appeals"
+    return sorted(d.glob("*.eml")) if d.is_dir() else []
+
+
+def find_appeal_file(contractor_name: str, explicit: Optional[str] = None) -> Path:
+    """Locate the contractor reply to re-check. Name it explicitly, or we match on surname."""
+    files = appeals_dir_files()
+    if explicit:
+        if "/" in explicit or "\\" in explicit or explicit.startswith("."):
+            raise ValueError(f"bad appeal file name {explicit!r}")
+        p = DATA / "appeals" / explicit
+        if not p.is_file():
+            raise FileNotFoundError(f"no appeal file data/appeals/{explicit}")
+        return p
+    parts = [w for w in (contractor_name or "").lower().split() if len(w) > 2]
+    for p in files:
+        hay = (p.name + " " + p.read_text(errors="replace")).lower()
+        if any(w in hay for w in parts):
+            return p
+    if len(files) == 1:
+        return files[0]
+    raise FileNotFoundError(f"no appeal file in data/appeals for {contractor_name!r}")
+
+
+def withheld_amount(audit: dict) -> float:
+    return round(float(audit["billed_total"]) - float(audit["approved_amount"]), 2)
+
+
+def appeal_cache_key(audit: dict, appeal_text: str, provider_name: str, model: str) -> str:
+    seed = json.dumps({
+        "file": audit.get("file"),
+        "invoice": audit.get("invoice_number"),
+        "decision": audit.get("decision"),
+        "approved": audit.get("approved_amount"),
+        "billed": audit.get("billed_total"),
+    }, sort_keys=True)
+    h = hashlib.sha256("|".join([PROMPT_VERSION, provider_name, model, APPEAL_PROMPT, seed, appeal_text]).encode())
+    return f"appeal-{h.hexdigest()}"
+
+
 def audit_appeal(audit: dict, appeal_text: str, provider: Optional[Provider] = None,
-                 vm: Optional[dict] = None) -> dict:
-    """Re-check a short-paid invoice against a contractor reply. Needs a live provider."""
-    provider = provider or make_provider()
+                 vm: Optional[dict] = None, *, mode: Optional[str] = None, force: bool = False) -> dict:
+    """Re-check a short-paid invoice against a contractor reply.
+
+    Cached like the audit itself, so the appeal beat in the video is instant and identical.
+    """
+    mode = mode or audit_mode()
     vm = load_vendor_master() if vm is None else vm
-    withheld = round(audit["billed_total"] - audit["approved_amount"], 2)
-    return provider.generate([APPEAL_PROMPT, "CONTRACTOR TERMS:", TERMS,
-                              f"ORIGINAL AUDIT:\n{json.dumps(audit, indent=2)}\nWITHHELD AMOUNT: {withheld}",
-                              f"VENDOR MASTER:\n{json.dumps(vm, indent=2)}",
-                              f"CONTRACTOR REPLY:\n{appeal_text}"], AppealResult)
+    withheld = withheld_amount(audit)
+
+    if mode == "cached":
+        for p in sorted(CACHE.glob("appeal-*.json")) if CACHE.exists() else []:
+            try:
+                res = json.loads(p.read_text())
+            except json.JSONDecodeError:
+                continue
+            if res.get("_for_file") == audit.get("file"):
+                out = dict(res)
+                out["_cache"] = {"hit": True, "key": p.stem, "mode": "cached"}
+                return out
+        res = legacy_cache(f"_appeal_{audit.get('file')}")
+        if res is None:
+            raise FileNotFoundError(f"AUDIT_MODE=cached but no cached appeal for {audit.get('file')} "
+                                    f"(run with AUDIT_MODE=live once, or run scripts/audit_test.py)")
+        out = dict(res)
+        out["_cache"] = {"hit": True, "key": "out/audit_results.json", "mode": "cached"}
+        return out
+
+    provider = provider or make_provider()
+    key = appeal_cache_key(audit, appeal_text, provider.name, provider.model)
+    cached = None if force else cache_read(key)
+    if cached is not None:
+        cached["_cache"] = {"hit": True, "key": key, "mode": "live"}
+        return cached
+
+    res = provider.generate([APPEAL_PROMPT, "CONTRACTOR TERMS:", TERMS,
+                             f"ORIGINAL AUDIT:\n{json.dumps(audit, indent=2)}\nWITHHELD AMOUNT: {withheld}",
+                             f"VENDOR MASTER:\n{json.dumps(vm, indent=2)}",
+                             f"CONTRACTOR REPLY:\n{appeal_text}"], AppealResult)
+    res["_for_file"] = audit.get("file")
+    cache_write(key, res)
+    res["_cache"] = {"hit": False, "key": key, "mode": "live"}
+    return res
 

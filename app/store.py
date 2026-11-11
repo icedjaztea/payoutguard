@@ -117,6 +117,42 @@ def list_runs() -> list:
     return out
 
 
+def all_runs() -> list:
+    out = []
+    for p in sorted(runs_dir().glob("run-*.json"), reverse=True):
+        try:
+            out.append(json.loads(p.read_text()))
+        except json.JSONDecodeError:
+            continue
+    return out
+
+
+def batches(run: dict) -> list:
+    """Every Payouts batch this run has sent: the main one plus any top-up batches."""
+    out = [run["batch"]] if run.get("batch") else []
+    out += [a["batch"] for a in (run.get("appeals") or {}).values() if a.get("batch")]
+    return out
+
+
+def find_run_for_batch(payout_batch_id: str) -> Optional[dict]:
+    for run in all_runs():
+        for b in batches(run):
+            if b.get("payout_batch_id") == payout_batch_id:
+                return run
+    return None
+
+
+def find_run_for_item(payout_item_id: str = "", sender_item_id: str = "") -> Optional[dict]:
+    for run in all_runs():
+        for b in batches(run):
+            for it in b.get("items") or []:
+                if payout_item_id and it.get("payout_item_id") == payout_item_id:
+                    return run
+                if sender_item_id and it.get("sender_item_id") == sender_item_id:
+                    return run
+    return None
+
+
 def clear_active() -> None:
     p = runs_dir() / ACTIVE
     with _lock:

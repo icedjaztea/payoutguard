@@ -154,3 +154,38 @@ def summarize_batch(res: dict) -> dict:
         "amount": (bh.get("amount", {}) or {}).get("value"),
         "items": items,
     }
+
+
+# ----------------------------------------------------------------------------- webhooks
+WEBHOOK_HEADERS = {
+    "auth_algo": "paypal-auth-algo",
+    "cert_url": "paypal-cert-url",
+    "transmission_id": "paypal-transmission-id",
+    "transmission_sig": "paypal-transmission-sig",
+    "transmission_time": "paypal-transmission-time",
+}
+
+
+def webhook_id() -> str:
+    return (os.environ.get("PAYPAL_WEBHOOK_ID") or "").strip()
+
+
+def verify_webhook_signature(headers, event: dict, token: Optional[str] = None) -> str:
+    """POST /v1/notifications/verify-webhook-signature. Returns SUCCESS / FAILURE / UNVERIFIED.
+
+    UNVERIFIED means we could not even ask: no PAYPAL_WEBHOOK_ID, or a header PayPal
+    always sends is missing. The caller decides what to do with that.
+    """
+    wid = webhook_id()
+    if not wid:
+        return "UNVERIFIED"
+    body = {"webhook_id": wid, "webhook_event": event}
+    for field, header in WEBHOOK_HEADERS.items():
+        value = headers.get(header) or headers.get(header.title())
+        if not value:
+            return "UNVERIFIED"
+        body[field] = value
+    st, res = call("POST", "/v1/notifications/verify-webhook-signature", token=token or get_token(), body=body)
+    if st != 200:
+        raise PayPalError(st, res, "verify webhook signature")
+    return res.get("verification_status", "FAILURE")

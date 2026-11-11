@@ -61,6 +61,7 @@ def main():
         audit = audit_file(p, provider, use_guardrails=not args.no_guardrails, mode="live",
                            ctx=ctx, vm=vm, history=history, force=args.no_cache)
         cached = (audit.pop("_cache", None) or {}).get("hit")
+        audit["file"] = p.name
         results[p.name] = audit
         exp = expected.get(p.name)
         ok = exp and audit["decision"] == exp["decision"] and abs(audit["approved_amount"] - exp["approved_amount"]) < 1
