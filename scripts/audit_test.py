@@ -88,7 +88,16 @@ def main():
               f"{res['top_up_amount']:,.2f}\n       {res['reasoning']}")
 
     OUT.mkdir(exist_ok=True)
-    (OUT / "audit_results.json").write_text(json.dumps(results, indent=2))
+    out_file = OUT / "audit_results.json"
+    # A --only run must not truncate the file: the app falls back to it in AUDIT_MODE=cached.
+    merged = {}
+    if args.only and out_file.exists():
+        try:
+            merged = json.loads(out_file.read_text())
+        except json.JSONDecodeError:
+            merged = {}
+    merged.update(results)
+    out_file.write_text(json.dumps(merged, indent=2))
     total = len(files)
     print(f"\nScore: {passed}/{total} invoices correct; appeal: "
           f"{'n/a' if appeal_ok is None else ('PASS' if appeal_ok else 'FAIL')}")
