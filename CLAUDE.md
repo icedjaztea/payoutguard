@@ -1,3 +1,8 @@
+## House rules
+Read this whole file first. Stay inside your folder (backend = app/, frontend = web/).
+Never commit .env or any key. Commit small and often with clear messages; git pull before you push.
+When you finish a step, tell me exactly how to test it in one or two commands.
+
 # PayoutGuard — Build Spec (PayPal AI Hackathon)
 
 > Hand this file to Claude Code / Codex as the source of truth. Copy it to `CLAUDE.md` and `AGENTS.md` at the repo root.
