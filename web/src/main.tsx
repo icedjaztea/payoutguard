@@ -5,9 +5,9 @@ import {
   Inbox, LoaderCircle, Mail, RotateCcw, ScanLine, ShieldCheck, Wallet, X,
 } from 'lucide-react'
 import { api, demoBilled, isMock, type Batch, type Run, type Verdict } from './api'
-import '@fontsource/ibm-plex-sans/400.css'
-import '@fontsource/ibm-plex-sans/500.css'
-import '@fontsource/ibm-plex-sans/600.css'
+import '@fontsource-variable/inter'
+import payoutguardMark from './assets/payoutguard-mark.svg'
+import brightloomMark from './assets/brightloom-mark.svg'
 import '@fontsource/ibm-plex-mono/500.css'
 import './styles.css'
 
@@ -258,16 +258,19 @@ function App() {
   return <div className="app">
     <header className="topbar">
       <div className="frame flex items-center justify-between">
-        <div className="brand"><span className="brand-icon"><ShieldCheck size={22} strokeWidth={2.2} /></span><span>PayoutGuard</span><span className="brand-divider" /><small>Brightloom Studio</small></div>
-        <div className="flex items-center gap-4"><span className="environment"><span className="dot" />{isMock ? 'Demo mode' : 'Sandbox'}</span>
-          <button data-testid="reset" className="secondary" onClick={reset} disabled={Boolean(action)}><RotateCcw size={15} /> Reset</button></div>
+        <div className="brand"><img src={payoutguardMark} alt="" width="28" height="28" /><span>PayoutGuard</span></div>
+        <div className="workspace">
+          <div className="workspace-badge"><img src={brightloomMark} alt="" width="24" height="24" /><div><strong>Brightloom Studio</strong><span>Weekly payout run · 6 Nov 2026</span></div></div>
+          <span className="avatar" aria-label="Brightloom Studio workspace profile">BS</span>
+        </div>
       </div>
     </header>
 
     <main className="frame grow">
       <section className="page-title">
         <div><div className="eyebrow">Payments / Weekly run</div><h1>Friday payout run</h1></div>
-        <span className="run-date"><span className="dot" /> 06 NOV 2026 <span className="date-divider">/</span> USD</span>
+        <div className="run-controls"><span className="environment"><span className="dot" />{isMock ? 'Demo mode' : 'Sandbox'} · USD</span>
+          <button data-testid="reset" className="secondary" onClick={reset} disabled={Boolean(action)}><RotateCcw size={15} /> Reset</button></div>
       </section>
 
       <section className="metrics" aria-label="Run totals">
@@ -287,7 +290,7 @@ function App() {
               const isImage = /\.jpe?g$/i.test(file)
               const DocIcon = isImage ? Image : FileText
               const thumbnail = isMock ? (isImage ? api.file(file) : thumbnails[`./thumbnails/${file}.png`]) : undefined
-              return <li key={file}><button data-testid={`document-${file}`} onClick={() => setSelected(file)} className="document" type="button">
+              return <li key={file}><button data-testid={`document-${file}`} onClick={() => setSelected(file)} className={`document ${selected === file ? 'selected' : ''}`} type="button">
                 <span className="paper">{thumbnail ? <img src={thumbnail} alt="" /> : <DocIcon size={16} />}</span>
                 <span className="document-name"><strong>{file}</strong></span>
                 {index < revealed ? <Check size={15} className="document-arrow" /> : <ArrowUpRight size={15} className="document-arrow" />}
@@ -314,7 +317,7 @@ function App() {
               const fullyPaid = settledTopUp > 0 && approved >= verdict.billed_total
               const clause = verdict.findings.find(finding => finding.clause)?.clause
               const reason = fullyPaid ? 'Written approval confirmed on appeal.' : cardReasons[verdict.decision] ?? payReasons[file] ?? verdict.findings[0]?.explanation
-              return <li key={file}><button type="button" data-testid={`verdict-${file}`} className={`verdict-card ${fullyPaid ? 'PAY' : verdict.decision}`} onClick={() => setSelected(file)}>
+              return <li key={file}><button type="button" data-testid={`verdict-${file}`} className={`verdict-card ${fullyPaid ? 'PAY' : verdict.decision} ${selected === file ? 'selected' : ''}`} onClick={() => setSelected(file)}>
                 <span className="card-top">
                   <strong>{verdict.contractor_name}</strong>
                   <span className={`verdict ${fullyPaid ? 'PAY' : verdict.decision}`}>{fullyPaid ? 'Paid in full after evidence' : decisions[verdict.decision]}</span>
