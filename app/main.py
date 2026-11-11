@@ -2,7 +2,10 @@
 
 Run:  uvicorn app.main:app --reload --port 8000
 Env:  AUDIT_MODE=live|cached, AI_PROVIDER/OPENAI_*, PAYPAL_CLIENT_ID/SECRET
-Webhooks and appeals are deliberately not here yet.
+
+Anything that changes a run does it inside store.mutate(run_id), which re-reads the run under a
+per-run lock: the webhook handler, the background poller and the request handlers all write the
+same file, and a plain load-modify-save would let them overwrite each other.
 """
 import json
 import logging
@@ -114,22 +117,28 @@ def payable_items(run: dict) -> list:
     return items
 
 
-def refresh_batch(run_id: str, payout_batch_id: str) -> Optional[str]:
-    """Re-read one batch from PayPal and write it back onto the run. Returns its status."""
-    run = store.load(run_id)
-    if run is None:
-        return None
-    try:
-        fresh = PP.summarize_batch(PP.get_payout(payout_batch_id))
-    except PP.PayPalError as e:
-        log.warning("poll %s: %s", payout_batch_id, e)
-        return None
+def apply_fresh_batch(run: dict, payout_batch_id: str, fresh: dict) -> None:
+    """Copy a just-fetched batch summary onto whichever stored batch it belongs to."""
     for batch in store.batches(run):
         if batch.get("payout_batch_id") == payout_batch_id:
             batch["batch_status"] = fresh.get("batch_status") or batch.get("batch_status")
             batch["amount"] = fresh.get("amount") or batch.get("amount")
             batch["items"] = fresh.get("items") or batch.get("items")
-    store.save(recompute_totals(run))
+
+
+def refresh_batch(run_id: str, payout_batch_id: str) -> Optional[str]:
+    """Re-read one batch from PayPal and write it back onto the run. Returns its status."""
+    if store.load(run_id) is None:
+        return None
+    try:
+        fresh = PP.summarize_batch(PP.get_payout(payout_batch_id))   # network: outside the lock
+    except PP.PayPalError as e:
+        log.warning("poll %s: %s", payout_batch_id, e)
+        return None
+    with store.mutate(run_id) as run:
+        if run is not None:
+            apply_fresh_batch(run, payout_batch_id, fresh)
+            recompute_totals(run)
     return fresh.get("batch_status")
 
 
@@ -210,21 +219,26 @@ def get_current_run():
 @app.get("/api/runs/{run_id}")
 def get_run(run_id: str, refresh: bool = Query(False, description="re-fetch the Payouts batch from PayPal")):
     run = recompute_totals(_run_or_404(run_id))
-    if refresh:
-        # Poll fallback for the webhook: re-read every batch this run has sent, top-ups included.
-        for batch in store.batches(run):
-            bid = batch.get("payout_batch_id")
-            if not bid:
-                continue
-            try:
-                fresh = PP.summarize_batch(PP.get_payout(bid))
-            except PP.PayPalError as e:
-                run["errors"] = run.get("errors", []) + [str(e)]
-                continue
-            batch["batch_status"] = fresh.get("batch_status") or batch.get("batch_status")
-            batch["amount"] = fresh.get("amount") or batch.get("amount")
-            batch["items"] = fresh.get("items") or batch.get("items")
-        store.save(run)
+    if not refresh:
+        return run
+
+    # Poll fallback for the webhook: re-read every batch this run has sent, top-ups included.
+    fetched, errors = {}, []
+    for batch in store.batches(run):
+        bid = batch.get("payout_batch_id")
+        if not bid:
+            continue
+        try:
+            fetched[bid] = PP.summarize_batch(PP.get_payout(bid))     # network: outside the lock
+        except PP.PayPalError as e:
+            errors.append(str(e))
+    with store.mutate(run["run_id"]) as fresh_run:
+        if fresh_run is not None:
+            for bid, fresh in fetched.items():
+                apply_fresh_batch(fresh_run, bid, fresh)
+            if errors:
+                fresh_run["errors"] = fresh_run.get("errors", []) + errors
+            run = recompute_totals(fresh_run)
     return run
 
 
@@ -235,7 +249,6 @@ def audit_run(run_id: str,
               guardrails: bool = Query(True)):
     run = _run_or_404(run_id)
     mode = A.audit_mode()
-    run["audit_mode"] = mode
     targets = [p for p in A.inbox_files() if p.name in run["files"]]
     if only:
         targets = [p for p in targets if p.name == only]
@@ -251,28 +264,39 @@ def audit_run(run_id: str,
 
     ctx, vm, history = A.context_text(), A.load_vendor_master(), A.load_history()
     expected = A.load_expected()
-    run["errors"] = []
+    with store.mutate(run_id) as fresh:
+        if fresh is not None:
+            fresh["audit_mode"] = mode
+            fresh["errors"] = []
+            run = fresh
+
     for p in targets:
+        error = None
         try:
             result = A.audit_file(p, provider, use_guardrails=guardrails, mode=mode,
                                   ctx=ctx, vm=vm, history=history, force=force)
         except Exception as e:  # noqa: BLE001 - one bad file must not kill the run
-            run["invoices"][p.name] = {"file": p.name, "status": "error", "error": str(e)}
-            run["errors"].append(f"{p.name}: {e}")
-            store.save(recompute_totals(run))
-            continue
-        inv = dict(result)
-        inv["file"] = p.name
-        inv["status"] = "audited"
-        inv["cache"] = inv.pop("_cache", None)
-        inv["expected"] = expected.get(p.name)  # demo-only: ground truth for the scoreboard
-        run["invoices"][p.name] = inv
-        store.save(recompute_totals(run))
+            error, inv = str(e), {"file": p.name, "status": "error", "error": str(e)}
+        else:
+            inv = dict(result)
+            inv["file"] = p.name
+            inv["status"] = "audited"
+            inv["cache"] = inv.pop("_cache", None)
+            inv["expected"] = expected.get(p.name)  # demo-only: ground truth for the scoreboard
+        # One short write per file, so the UI sees progress and no other writer is clobbered.
+        with store.mutate(run_id) as fresh:
+            if fresh is not None:
+                fresh["invoices"][p.name] = inv
+                if error:
+                    fresh["errors"] = fresh.get("errors", []) + [f"{p.name}: {error}"]
+                run = recompute_totals(fresh)
 
-    if all(run["invoices"][n].get("status") == "audited" for n in run["files"]):
-        if run["status"] == "created":
-            run["status"] = "audited"
-    store.save(recompute_totals(run))
+    with store.mutate(run_id) as fresh:
+        if fresh is not None:
+            if fresh["status"] == "created" and all(
+                    fresh["invoices"][n].get("status") == "audited" for n in fresh["files"]):
+                fresh["status"] = "audited"
+            run = recompute_totals(fresh)
     return run
 
 
@@ -302,10 +326,13 @@ def approve_run(run_id: str,
     batch = PP.summarize_batch(res)
     batch["sender_batch_id"] = sender_batch_id
     batch["items_sent"] = items
-    run["batch"] = batch
-    run["status"] = "approved"
-    run["approved_at"] = store.now()
-    store.save(recompute_totals(run))
+    with store.mutate(run_id) as fresh:
+        if fresh is not None:
+            fresh["batch"] = batch
+            fresh["status"] = "approved"
+            fresh["approved_at"] = store.now()
+            fresh["errors"] = run.get("errors") or fresh.get("errors") or []
+            run = recompute_totals(fresh)
     start_polling(run["run_id"], batch.get("payout_batch_id"))
     return run
 
@@ -427,11 +454,15 @@ def run_appeal(run_id: str, file: str,
 
     if appeal.get("batch"):
         start_polling(run["run_id"], appeal["batch"].get("payout_batch_id"))
-    run.setdefault("appeals", {})[file] = appeal
-    inv["appeal"] = {k: appeal[k] for k in ("decision", "top_up_amount", "clause", "reasoning", "evidence")}
-    if appeal["decision"] == "TOP_UP" and appeal["batch"]:
-        inv["paid_total"] = round(float(inv["approved_amount"]) + appeal["top_up_amount"], 2)
-    store.save(recompute_totals(run))
+    with store.mutate(run_id) as fresh:
+        if fresh is not None:
+            fresh.setdefault("appeals", {})[file] = appeal
+            finv = fresh["invoices"].get(file) or inv
+            finv["appeal"] = {k: appeal[k]
+                              for k in ("decision", "top_up_amount", "clause", "reasoning", "evidence")}
+            if appeal["decision"] == "TOP_UP" and appeal["batch"]:
+                finv["paid_total"] = round(float(finv["approved_amount"]) + appeal["top_up_amount"], 2)
+            run = recompute_totals(fresh)
     return {"run_id": run["run_id"], "appeal": appeal, "totals": run["totals"]}
 
 
@@ -445,37 +476,42 @@ def apply_webhook_event(event: dict) -> dict:
     if kind in BATCH_EVENT_STATUS:
         bh = res.get("batch_header") or res
         batch_id = bh.get("payout_batch_id")
-        run = store.find_run_for_batch(batch_id) if batch_id else None
-        if run:
-            for b in store.batches(run):
-                if b.get("payout_batch_id") == batch_id:
-                    b["batch_status"] = bh.get("batch_status") or BATCH_EVENT_STATUS[kind]
-            changed.update(matched=True, run_id=run["run_id"], payout_batch_id=batch_id,
-                           batch_status=BATCH_EVENT_STATUS[kind])
-            _record_event(run, event)
-            store.save(recompute_totals(run))
+        found = store.find_run_for_batch(batch_id) if batch_id else None
+        if found:
+            status = bh.get("batch_status") or BATCH_EVENT_STATUS[kind]
+            with store.mutate(found["run_id"]) as run:
+                if run is not None:
+                    for b in store.batches(run):
+                        if b.get("payout_batch_id") == batch_id:
+                            b["batch_status"] = status
+                    changed.update(matched=True, run_id=run["run_id"], payout_batch_id=batch_id,
+                                   batch_status=BATCH_EVENT_STATUS[kind])
+                    _record_event(run, event)
+                    recompute_totals(run)
         return changed
 
     if kind in ITEM_EVENT_STATUS:
         item_id = res.get("payout_item_id")
         sender_item_id = (res.get("payout_item") or {}).get("sender_item_id")
         batch_id = res.get("payout_batch_id")
-        run = (store.find_run_for_batch(batch_id) if batch_id else None) \
+        found = (store.find_run_for_batch(batch_id) if batch_id else None) \
             or store.find_run_for_item(item_id or "", sender_item_id or "")
-        if run:
+        if found:
             status = res.get("transaction_status") or ITEM_EVENT_STATUS[kind]
-            hit = False
-            for b in store.batches(run):
-                for it in b.get("items") or []:
-                    if (item_id and it.get("payout_item_id") == item_id) or \
-                       (sender_item_id and it.get("sender_item_id") == sender_item_id):
-                        it["transaction_status"] = status
-                        it["errors"] = res.get("errors") or it.get("errors")
-                        hit = True
-            changed.update(matched=hit, run_id=run["run_id"], payout_item_id=item_id,
-                           sender_item_id=sender_item_id, transaction_status=status)
-            _record_event(run, event)
-            store.save(recompute_totals(run))
+            with store.mutate(found["run_id"]) as run:
+                if run is not None:
+                    hit = False
+                    for b in store.batches(run):
+                        for it in b.get("items") or []:
+                            if (item_id and it.get("payout_item_id") == item_id) or \
+                               (sender_item_id and it.get("sender_item_id") == sender_item_id):
+                                it["transaction_status"] = status
+                                it["errors"] = res.get("errors") or it.get("errors")
+                                hit = True
+                    changed.update(matched=hit, run_id=run["run_id"], payout_item_id=item_id,
+                                   sender_item_id=sender_item_id, transaction_status=status)
+                    _record_event(run, event)
+                    recompute_totals(run)
         return changed
 
     return changed

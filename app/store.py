@@ -8,6 +8,7 @@ import os
 import tempfile
 import threading
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -17,6 +18,20 @@ RUNS = Path(os.environ.get("PAYOUTGUARD_RUNS_DIR") or (ROOT / "runs"))
 ACTIVE = "active.json"
 
 _lock = threading.Lock()
+
+# One lock per run id. The webhook handler, the background poller and the appeal endpoint all
+# read-modify-write the same runs/{id}.json; without this, two of them finishing at the same
+# moment clobber each other and an update (typically a recorded webhook event) is lost.
+_run_locks: dict = {}
+_run_locks_guard = threading.Lock()
+
+
+def run_lock(run_id: str) -> threading.RLock:
+    with _run_locks_guard:
+        lock = _run_locks.get(run_id)
+        if lock is None:
+            lock = _run_locks[run_id] = threading.RLock()
+        return lock
 
 
 def runs_dir() -> Path:
@@ -77,11 +92,17 @@ def save(run: dict) -> dict:
     return run
 
 
-def load(run_id: str) -> Optional[dict]:
+def resolve(run_id: str) -> Optional[str]:
+    """Turn "active" / "current" into a concrete run id."""
     if run_id in ("active", "current"):
-        run_id = active_run_id() or ""
-        if not run_id:
-            return None
+        return active_run_id()
+    return run_id or None
+
+
+def load(run_id: str) -> Optional[dict]:
+    run_id = resolve(run_id) or ""
+    if not run_id:
+        return None
     try:
         p = _path(run_id)
     except ValueError:
@@ -158,3 +179,25 @@ def clear_active() -> None:
     with _lock:
         if p.exists():
             p.unlink()
+
+
+@contextmanager
+def mutate(run_id: str):
+    """Read-modify-write one run under its own lock.
+
+    Everything inside the block sees the run as it is on disk right now, and the write happens
+    before any other writer can read it, so concurrent updates merge instead of overwriting.
+    Yields None if the run is gone. Keep network calls outside the block: it serialises writers,
+    and do not return or break out of it - the write happens when the block ends normally.
+    """
+    rid = resolve(run_id)
+    if rid is None:
+        yield None
+        return
+    with run_lock(rid):
+        run = load(rid)
+        if run is None:
+            yield None
+            return
+        yield run
+        save(run)
