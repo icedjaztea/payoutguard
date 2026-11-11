@@ -187,7 +187,9 @@ def register_webhook_on_startup() -> Optional[str]:
 def health():
     return {"ok": True, "audit_mode": A.audit_mode(), "provider": os.environ.get("AI_PROVIDER", "openai"),
             "active_run": store.active_run_id(), "paypal_base": PP.api_base(),
-            "webhook_id": PP.webhook_id() or None, "polling": sorted(_polling)}
+            "webhook_id": PP.webhook_id() or None, "polling": sorted(_polling),
+            # Render sets RENDER_GIT_COMMIT, so a deploy can be identified from outside.
+            "commit": (os.environ.get("RENDER_GIT_COMMIT") or "")[:7] or None}
 
 
 @app.post("/api/runs")
