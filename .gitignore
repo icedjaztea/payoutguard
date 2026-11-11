@@ -4,3 +4,7 @@ __pycache__/
 
 .venv/
 runs/
+
+# demo video is too big for git; the screenshots and config are committed
+submission/*.mp4
+submission/*.mov
