@@ -1,9 +1,16 @@
 {
   "url": "https://payoutguard.onrender.com/",
-  "prewarmUrls": ["https://payoutguard.onrender.com/api/health"],
-  "viewport": { "x": 0, "y": 0, "width": 1920, "height": 1080 },
+  "prewarmUrls": [
+    "https://payoutguard.onrender.com/api/health"
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080
+  },
   "capture": "frames",
-  "captureFps": 30,
+  "captureFps": 60,
   "captureQuality": 85,
   "stepPauseMs": 700,
   "actionLeadFraction": 0.65,
@@ -13,101 +20,262 @@
   "scenes": [
     {
       "say": "Every Friday, platforms pay hundreds of contractors through PayPal Payouts.",
-      "steps": [{ "action": "waitFor", "selector": "[data-testid=\"document-invoice.pdf\"]", "timeout": 60000 },
-                { "action": "click", "selector": "#inbox-title" }],
-      "expect": { "visible": "[data-testid=\"audit-run\"]" }
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"document-invoice.pdf\"]",
+          "timeout": 60000
+        },
+        {
+          "action": "click",
+          "selector": "#inbox-title"
+        }
+      ],
+      "expect": {
+        "visible": "[data-testid=\"audit-run\"]"
+      }
     },
     {
       "say": "The median company loses about one and a half percent of its disbursements to duplicate or wrong payments. That is A P Q C, twenty twenty four. This week's run has a scammer in it.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"document-invoice.pdf\"]" },
-                { "action": "wait", "ms": 1200 },
-                { "action": "click", "selector": "[data-testid=\"close-drawer\"]" }],
-      "expect": { "visible": "[data-testid=\"audit-run\"]" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"document-invoice.pdf\"]"
+        },
+        {
+          "action": "wait",
+          "ms": 1200
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"close-drawer\"]"
+        }
+      ],
+      "expect": {
+        "visible": "[data-testid=\"audit-run\"]"
+      }
     },
     {
       "say": "This is built for finance operations at agencies and marketplaces, the people who pay contractors through PayPal Payouts. Eight documents came in this week.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"counter-billed\"] small" }],
-      "expect": { "text": "8 source documents" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"counter-billed\"] small"
+        }
+      ],
+      "expect": {
+        "text": "8 source documents"
+      }
     },
     {
       "say": "I'll run the audit. Every invoice is checked against the contract, the payee list, and the payment history.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"audit-run\"]" }],
-      "expect": { "visible": "text=Audit complete", "timeout": 90000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"audit-run\"]"
+        }
+      ],
+      "expect": {
+        "visible": "text=Audit complete",
+        "timeout": 90000
+      }
     },
     {
       "say": "Eight verdicts come back. Five are clean. Three are exceptions, and each one names the clause it failed.",
-      "steps": [{ "action": "click", "selector": "#review-title" }],
-      "expect": { "visible": "[data-testid=\"verdict-invoice.pdf\"]" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "#review-title"
+        }
+      ],
+      "expect": {
+        "visible": "[data-testid=\"verdict-invoice.pdf\"]"
+      }
     },
     {
       "say": "Start with the biggest one. Tom's invoice asks to be paid at a new address, and the request arrived by email, from a look-alike domain.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"verdict-invoice.pdf\"]" }],
-      "expect": { "visible": "dialog.drawer", "timeout": 20000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"verdict-invoice.pdf\"]"
+        }
+      ],
+      "expect": {
+        "visible": "dialog.drawer",
+        "timeout": 20000
+      }
     },
     {
       "say": "No payee change is on file, so clause five quarantines the payee. Nine thousand four hundred dollars, held.",
-      "steps": [{ "action": "click", "selector": ".findings .finding p" }],
-      "expect": { "text": "Payee quarantined" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": ".findings .finding p"
+        }
+      ],
+      "expect": {
+        "text": "Payee quarantined"
+      }
     },
     {
       "say": "Next, the same October blog series, billed a second time. The invoice number gained a zero, but clause three still catches the duplicate.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"close-drawer\"]" },
-                { "action": "click", "selector": "[data-testid=\"verdict-Document (3).pdf\"]" }],
-      "expect": { "text": "Duplicate hold", "timeout": 20000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"close-drawer\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"verdict-Document (3).pdf\"]"
+        }
+      ],
+      "expect": {
+        "text": "Duplicate hold",
+        "timeout": 20000
+      }
     },
     {
       "say": "Priya's invoice is mostly right. Her hours and her rate check out. But a six hundred and fifty dollar rush surcharge has no written approval, so clause four point three short pays it.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"close-drawer\"]" },
-                { "action": "click", "selector": "[data-testid=\"verdict-scan_0042.pdf\"]" },
-                { "action": "click", "selector": "[data-testid=\"toggle-findings\"]" }],
-      "expect": { "text": "Clause 4.3", "timeout": 20000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"close-drawer\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"verdict-scan_0042.pdf\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"toggle-findings\"]"
+        }
+      ],
+      "expect": {
+        "text": "Clause 4.3",
+        "timeout": 20000
+      }
     },
     {
       "say": "Twenty five thousand, five hundred and eighty dollars billed this week. Fourteen thousand and ninety of it is payable.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"close-drawer\"]" },
-                { "action": "click", "selector": "[data-testid=\"counter-billed\"] strong" }],
-      "expect": { "text": "$25,580" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"close-drawer\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"counter-billed\"] strong"
+        }
+      ],
+      "expect": {
+        "text": "$25,580"
+      }
     },
     {
       "say": "Now the payout. One click sends a single PayPal Payouts batch, carrying only the invoices that passed.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"approve-pay\"]" }],
-      "expect": { "visible": "[data-testid=\"payout-batch\"]", "timeout": 120000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"approve-pay\"]"
+        }
+      ],
+      "expect": {
+        "visible": "[data-testid=\"payout-batch\"]",
+        "timeout": 120000
+      }
     },
     {
       "say": "That is a real batch id from the PayPal Payouts API. Six items, each one carrying its own remittance note.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"payout-batch\"] .batch-meta code" }],
-      "expect": { "visible": "[data-testid=\"payout-batch\"] .batch-meta code" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"payout-batch\"] .batch-meta code"
+        }
+      ],
+      "expect": {
+        "visible": "[data-testid=\"payout-batch\"] .batch-meta code"
+      }
     },
     {
       "say": "PayPal's webhooks report back, and every item turns to success. Fourteen thousand and ninety dollars paid, in one batch. Eleven thousand four hundred and ninety stopped before it left.",
-      "steps": [{ "action": "wait", "ms": 1500 }],
-      "expect": { "text": "6/6 sent", "timeout": 180000 }
+      "steps": [
+        {
+          "action": "wait",
+          "ms": 1500
+        }
+      ],
+      "expect": {
+        "text": "6/6 sent",
+        "timeout": 180000
+      }
     },
     {
       "say": "Then Priya replies. Her project manager approved the rush in writing, and the message is dated before the work started.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"review-evidence\"]" }],
-      "expect": { "visible": "[data-testid=\"top-up-batch\"]", "timeout": 180000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"review-evidence\"]"
+        }
+      ],
+      "expect": {
+        "visible": "[data-testid=\"top-up-batch\"]",
+        "timeout": 180000
+      }
     },
     {
       "say": "The audit reads that reply against clause four point three, accepts it, and releases a six hundred and fifty dollar top up. A second real batch.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"open-appeal-drawer\"]" }],
-      "expect": { "visible": "[data-testid=\"appeal-finding\"]", "timeout": 20000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"open-appeal-drawer\"]"
+        }
+      ],
+      "expect": {
+        "visible": "[data-testid=\"appeal-finding\"]",
+        "timeout": 20000
+      }
     },
     {
       "say": "Not a blocker. A fair auditor. Ten thousand eight hundred and forty dollars protected.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"close-drawer\"]" },
-                { "action": "click", "selector": "[data-testid=\"counter-protected\"] strong" }],
-      "expect": { "text": "$10,840", "timeout": 30000 }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"close-drawer\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"counter-protected\"] strong"
+        }
+      ],
+      "expect": {
+        "text": "$10,840",
+        "timeout": 30000
+      }
     },
     {
       "say": "PayPal moves the money. PayoutGuard makes sure it is the right amount, to the right person.",
-      "steps": [{ "action": "click", "selector": "[data-testid=\"counter-paying\"] strong" }],
-      "expect": { "text": "$14,740" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"counter-paying\"] strong"
+        }
+      ],
+      "expect": {
+        "text": "$14,740"
+      }
     },
     {
       "say": "Built with OpenAI, PayPal Payouts and webhooks. Synthetic data, on the PayPal sandbox.",
-      "steps": [{ "action": "click", "selector": "footer.footer" }],
-      "expect": { "text": "PayPal sandbox" }
+      "steps": [
+        {
+          "action": "click",
+          "selector": "footer.footer"
+        }
+      ],
+      "expect": {
+        "text": "PayPal sandbox"
+      }
     }
-  ]
+  ],
+  "_executablePath_note": "point this at a shell script that execs Playwright's Chromium with --force-prefers-reduced-motion; the counters then jump to their final value instead of animating past it in the capture"
 }

@@ -20,6 +20,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="https://payoutguard.onrender.com")
     ap.add_argument("--out", default="submission")
+    ap.add_argument("--no-reset", action="store_true",
+                    help="keep the run as it is: skips the inbox shot, which needs a reset")
     args = ap.parse_args()
 
     with sync_playwright() as p:
@@ -30,16 +32,17 @@ def main() -> None:
         page.wait_for_timeout(1200)
 
         # The finished payout tray: initial batch, Priya's appeal, and the top-up batch under it.
+        # The whole app fits on one 1080p screen, so a full-page shot of the finished run is the
+        # same picture twice. Each panel is photographed on its own instead.
         taken, skipped = [], []
         if page.get_by_test_id("top-up-batch").count():
-            page.screenshot(path=f"{args.out}/{SHOTS[3]}")
+            page.locator("section.panel.payout").screenshot(path=f"{args.out}/{SHOTS[3]}")
             taken.append(SHOTS[3])
         else:
             skipped.append(f"{SHOTS[3]} (this run has no top-up batch yet)")
 
         # All eight verdicts, with Priya's card reading "Paid in full after evidence" once topped up.
-        page.get_by_test_id("counter-protected").scroll_into_view_if_needed()
-        page.screenshot(path=f"{args.out}/{SHOTS[1]}")
+        page.locator("section.panel.review").screenshot(path=f"{args.out}/{SHOTS[1]}")
         taken.append(SHOTS[1])
 
         # The quarantined payee, source document beside the finding that stopped it.
@@ -50,12 +53,16 @@ def main() -> None:
         taken.append(SHOTS[2])
         page.get_by_test_id("close-drawer").click()
 
-        # Reset last: this is the only way back to an un-audited inbox.
-        page.get_by_test_id("reset").click()
-        page.wait_for_selector("text=Awaiting audit", timeout=60_000)
-        page.wait_for_timeout(1200)
-        page.screenshot(path=f"{args.out}/{SHOTS[0]}")
-        taken.append(SHOTS[0])
+        # Reset last: this is the only way back to an un-audited inbox, and it throws the run away,
+        # so --no-reset is there for when the finished state is still wanted afterwards.
+        if args.no_reset:
+            skipped.append(f"{SHOTS[0]} (--no-reset: the inbox shot needs a reset run)")
+        else:
+            page.get_by_test_id("reset").click()
+            page.wait_for_selector("text=Awaiting audit", timeout=60_000)
+            page.wait_for_timeout(1200)
+            page.screenshot(path=f"{args.out}/{SHOTS[0]}")
+            taken.append(SHOTS[0])
 
         browser.close()
     for name in sorted(taken):

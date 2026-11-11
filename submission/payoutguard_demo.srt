@@ -1,0 +1,84 @@
+1
+00:00:00,000 --> 00:00:04,520
+Every Friday, platforms pay hundreds of contractors through PayPal Payouts.
+
+2
+00:00:05,620 --> 00:00:10,320
+The median company loses about one and a half percent of its disbursements to duplicate or
+
+3
+00:00:10,320 --> 00:00:18,860
+wrong payments. That is APQC, 2024. This week's run has a scammer in it. This is built for finance
+
+4
+00:00:18,860 --> 00:00:24,740
+operations at agencies and marketplaces, the people who pay contractors through PayPal Payouts.
+
+5
+00:00:24,740 --> 00:00:31,120
+Eight documents came in this week. I'll run the audit. Every invoice is checked against the
+
+6
+00:00:31,120 --> 00:00:38,500
+contract, the payee list, and the payment history. Eight verdicts come back. Five are clean. Three
+
+7
+00:00:38,500 --> 00:00:44,720
+are exceptions, and each one names the clause it failed. Start with the biggest one. Tom's invoice
+
+8
+00:00:44,720 --> 00:00:51,820
+asks to be paid at a new address, and the request arrived by email from a lookalike domain. No payee
+
+9
+00:00:51,820 --> 00:01:00,640
+change is on file, so Clause 5 quarantines the payee. $9,400 held. Next, the same October blog
+
+10
+00:01:00,640 --> 00:01:06,960
+series billed a second time. The invoice number gained a zero, but Clause 3 still catches the
+
+11
+00:01:06,620 --> 00:01:14,040
+duplicate. Priya's invoice is mostly right. Her hours and her rate check out. But a $650
+
+12
+00:01:14,040 --> 00:01:24,140
+rush surcharge has no written approval, so Clause 4.3 short pays it. $25,580 billed this week.
+
+13
+00:01:24,940 --> 00:01:31,940
+$14,090 of it is payable. Now the payout. One click sends a single PayPal Payouts batch,
+
+14
+00:01:32,640 --> 00:01:38,360
+carrying only the invoices that passed. That is a real batch id from the PayPal Payouts API.
+
+15
+00:01:38,920 --> 00:01:44,880
+Six items, each one carrying its own remittance note. PayPal's webhooks report back,
+
+16
+00:01:45,280 --> 00:01:55,020
+and every item turns to success. $14,090 paid, in one batch. $11,490 stopped before it left.
+
+17
+00:02:02,640 --> 00:02:09,020
+Then Priya replies. Her project manager approved the rush in writing, and the message is dated
+
+18
+00:02:09,020 --> 00:02:15,980
+before the work started. The audit reads that reply against Clause 4.3, accepts it, and releases
+
+19
+00:02:15,980 --> 00:02:25,000
+a $650 top-up. A second real batch. Not a blocker. A fair auditor. $10,840 protected.
+
+20
+00:02:27,160 --> 00:02:32,980
+PayPal moves the money. PayoutGuard makes sure it is the right amount to the right person.
+
+21
+00:02:33,680 --> 00:02:39,260
+Built with OpenAI, PayPal Payouts, and webhooks. Synthetic data on the PayPal sandbox.
+

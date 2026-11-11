@@ -1,0 +1,212 @@
+{
+  "ok": false,
+  "assertionsOk": true,
+  "verifyOk": false,
+  "verifyUnavailable": null,
+  "assertions": [
+    {
+      "scene": 0,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 1,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 2,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 3,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 4,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 5,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 6,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 7,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 8,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 9,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 10,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 11,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 12,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 13,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 14,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 15,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 16,
+      "ok": true,
+      "reason": "ok"
+    },
+    {
+      "scene": 17,
+      "ok": true,
+      "reason": "ok"
+    }
+  ],
+  "verify": {
+    "scenes": [
+      {
+        "at": 5.008,
+        "say": "Every Friday, platforms pay hundreds of contractors through PayPal Payouts.",
+        "reason": "The screenshot shows a 'Friday payout run' page, consistent with the narration about weekly payments.",
+        "verdict": "pass"
+      },
+      {
+        "at": 16.974,
+        "say": "The median company loses about one and a half percent of its disbursements to duplicate or wrong payments. That is A P Q C, twenty twenty four. This week's run has a scammer in it.",
+        "reason": "The screenshot shows a payout audit screen, which is consistent with the narration about disbursements and potential scams.",
+        "verdict": "pass"
+      },
+      {
+        "at": 27.285,
+        "say": "This is built for finance operations at agencies and marketplaces, the people who pay contractors through PayPal Payouts. Eight documents came in this week.",
+        "reason": "The screenshot shows 8 source documents, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 34.787,
+        "say": "I'll run the audit. Every invoice is checked against the contract, the payee list, and the payment history.",
+        "reason": "The screenshot shows an auditing process in progress, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 41.642,
+        "say": "Eight verdicts come back. Five are clean. Three are exceptions, and each one names the clause it failed.",
+        "reason": "The screenshot shows eight verdicts, with five marked 'Pay in full' and three exceptions naming clauses.",
+        "verdict": "pass"
+      },
+      {
+        "at": 50.706,
+        "say": "Start with the biggest one. Tom's invoice asks to be paid at a new address, and the request arrived by email, from a look-alike domain.",
+        "reason": "The screenshot shows Tom's invoice with a new payment address and a note about the PayPal change, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 58.234,
+        "say": "No payee change is on file, so clause five quarantines the payee. Nine thousand four hundred dollars, held.",
+        "reason": "The screenshot shows the payee quarantine due to no payee change on file, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 67.68,
+        "say": "Next, the same October blog series, billed a second time. The invoice number gained a zero, but clause three still catches the duplicate.",
+        "reason": "The screenshot shows a duplicate hold for Diego Ramos with clause three catching the duplicate, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 79.559,
+        "say": "Priya's invoice is mostly right. Her hours and her rate check out. But a six hundred and fifty dollar rush surcharge has no written approval, so clause four point three short pays it.",
+        "reason": "The screenshot shows a remittance note preview mentioning clause 4.3 and withholding the $650 rush surcharge, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 87.469,
+        "say": "Twenty five thousand, five hundred and eighty dollars billed this week. Fourteen thousand and ninety of it is payable.",
+        "reason": "The billed and payable amounts match the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 94.707,
+        "say": "Now the payout. One click sends a single PayPal Payouts batch, carrying only the invoices that passed.",
+        "reason": "The screenshot shows a list of invoices with pending status, consistent with sending a PayPal Payouts batch.",
+        "verdict": "pass"
+      },
+      {
+        "at": 102.522,
+        "say": "That is a real batch id from the PayPal Payouts API. Six items, each one carrying its own remittance note.",
+        "reason": "The screenshot shows a PayPal batch ID with six items, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 122.612,
+        "say": "PayPal's webhooks report back, and every item turns to success. Fourteen thousand and ninety dollars paid, in one batch. Eleven thousand four hundred and ninety stopped before it left.",
+        "reason": "The screenshot shows $14,090 paid and $11,490 stopped, matching the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 130.377,
+        "say": "Then Priya replies. Her project manager approved the rush in writing, and the message is dated before the work started.",
+        "reason": "The screenshot shows Priya's appeal with details about the approval being in writing and dated before the work started, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 140.231,
+        "say": "The audit reads that reply against clause four point three, accepts it, and releases a six hundred and fifty dollar top up. A second real batch.",
+        "reason": "The screenshot shows the audit accepting the reply against clause 4.3 and approving a $650 top-up, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 146.991,
+        "say": "Not a blocker. A fair auditor. Ten thousand eight hundred and forty dollars protected.",
+        "reason": "The protected amount is $11,490, not $10,840 as stated in the narration.",
+        "verdict": "fail"
+      },
+      {
+        "at": 152.934,
+        "say": "PayPal moves the money. PayoutGuard makes sure it is the right amount, to the right person.",
+        "reason": "The screenshot shows PayoutGuard ensuring correct payouts, consistent with the narration.",
+        "verdict": "pass"
+      },
+      {
+        "at": 159.645,
+        "say": "Built with OpenAI, PayPal Payouts and webhooks. Synthetic data, on the PayPal sandbox.",
+        "reason": "The screenshot shows a payout interface consistent with PayPal Payouts and sandbox testing.",
+        "verdict": "pass"
+      }
+    ],
+    "pass": false
+  },
+  "video": "/var/folders/96/dfct231164l_fync9grh50580000gn/T/demotape-frames-hapoKw/capture.voiceover.mp4"
+}
