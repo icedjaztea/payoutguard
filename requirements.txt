@@ -1,0 +1,4 @@
+openai>=1.60
+pydantic>=2
+# optional backup provider:
+# google-genai>=1.0

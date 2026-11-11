@@ -1,0 +1,69 @@
+{
+  "run_date": "2026-11-06",
+  "invoices": {
+    "scan_0042.pdf": {
+      "contractor_id": "C003",
+      "billed_total": 4850.0,
+      "decision": "SHORT_PAY",
+      "approved_amount": 4200.0,
+      "withheld": 650.0,
+      "why": "Rush surcharge needs written PM pre-approval stating the amount (clause 4.3); none on file at run time.",
+      "after_appeal": {
+        "appeal_file": "appeals/priya_reply.eml",
+        "decision": "TOP_UP",
+        "top_up_amount": 650.0,
+        "why": "Forwarded PM email dated 30 Oct (before the work) approves a flat USD 650 surcharge, satisfying clause 4.3."
+      }
+    },
+    "Document (3).pdf": {
+      "contractor_id": "C002",
+      "billed_total": 1440.0,
+      "decision": "HOLD_DUPLICATE",
+      "approved_amount": 0.0,
+      "why": "Same work, period and amount as INV-117 paid 30 Oct 2026; re-numbered INV-0117 (clause 3)."
+    },
+    "invoice.pdf": {
+      "contractor_id": "C004",
+      "billed_total": 9400.0,
+      "decision": "QUARANTINE_PAYEE",
+      "approved_amount": 0.0,
+      "why": "Payee email changed to look-alike domain okafor-edits.co via email (clause 5); amount ~3-4x Tom's usual; urgency + no call-back."
+    },
+    "scan_0043.pdf": {
+      "contractor_id": "C001",
+      "billed_total": 3400.0,
+      "decision": "PAY",
+      "approved_amount": 3400.0
+    },
+    "final_FINAL_v2.pdf": {
+      "contractor_id": "C007",
+      "billed_total": 2880.0,
+      "decision": "PAY",
+      "approved_amount": 2880.0
+    },
+    "20261105_invoice.pdf": {
+      "contractor_id": "C008",
+      "billed_total": 1050.0,
+      "decision": "PAY",
+      "approved_amount": 1050.0
+    },
+    "IMG_1234.jpg": {
+      "contractor_id": "C005",
+      "billed_total": 1350.0,
+      "decision": "PAY",
+      "approved_amount": 1350.0
+    },
+    "IMG_1301.jpg": {
+      "contractor_id": "C006",
+      "billed_total": 1210.0,
+      "decision": "PAY",
+      "approved_amount": 1210.0
+    }
+  },
+  "totals": {
+    "billed": 25580.0,
+    "paid_in_batch": 14090.0,
+    "held_or_withheld": 11490.0,
+    "paid_after_appeal": 14740.0
+  }
+}

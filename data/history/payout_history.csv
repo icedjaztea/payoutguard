@@ -1,0 +1,57 @@
+payout_date,contractor_id,contractor_name,invoice_number,description,amount_usd,paypal_email,status
+2026-09-18,C001,Maya Chen,MC-281,39 x hour,3315.00,maya.chen.brightloom@personal.example.com,SUCCESS
+2026-09-18,C002,Diego Ramos,DR-282,2 x blog post,720.00,diego.ramos.brightloom@personal.example.com,SUCCESS
+2026-09-18,C003,Priya Nair,PN-283,44 x hour,3696.00,priya.nair.brightloom@personal.example.com,SUCCESS
+2026-09-18,C004,Tom Okafor,TO-284,2 x edited video,2400.00,tom.okafor.brightloom@personal.example.com,SUCCESS
+2026-09-18,C005,Lena Fischer,LF-285,4 x illustration,1800.00,lena.fischer.brightloom@personal.example.com,SUCCESS
+2026-09-18,C006,Sam Whitfield,SW-286,14 x hour,770.00,sam.whitfield.brightloom@personal.example.com,SUCCESS
+2026-09-18,C007,Kofi Mensah,KM-287,29 x hour,2320.00,kofi.mensah.brightloom@personal.example.com,SUCCESS
+2026-09-18,C008,Aiko Tanaka,AT-288,"5,000 x word",700.00,aiko.tanaka.brightloom@personal.example.com,SUCCESS
+2026-09-25,C001,Maya Chen,MC-284,39 x hour,3315.00,maya.chen.brightloom@personal.example.com,SUCCESS
+2026-09-25,C002,Diego Ramos,DR-285,4 x blog post,1440.00,diego.ramos.brightloom@personal.example.com,SUCCESS
+2026-09-25,C003,Priya Nair,PN-286,38 x hour,3192.00,priya.nair.brightloom@personal.example.com,SUCCESS
+2026-09-25,C004,Tom Okafor,TO-287,3 x edited video,3600.00,tom.okafor.brightloom@personal.example.com,SUCCESS
+2026-09-25,C005,Lena Fischer,LF-288,4 x illustration,1800.00,lena.fischer.brightloom@personal.example.com,SUCCESS
+2026-09-25,C006,Sam Whitfield,SW-289,17 x hour,935.00,sam.whitfield.brightloom@personal.example.com,SUCCESS
+2026-09-25,C007,Kofi Mensah,KM-290,28 x hour,2240.00,kofi.mensah.brightloom@personal.example.com,SUCCESS
+2026-09-25,C008,Aiko Tanaka,AT-291,"5,000 x word",700.00,aiko.tanaka.brightloom@personal.example.com,SUCCESS
+2026-10-02,C001,Maya Chen,MC-287,40 x hour,3400.00,maya.chen.brightloom@personal.example.com,SUCCESS
+2026-10-02,C002,Diego Ramos,DR-288,3 x blog post,1080.00,diego.ramos.brightloom@personal.example.com,SUCCESS
+2026-10-02,C003,Priya Nair,PN-289,39 x hour,3276.00,priya.nair.brightloom@personal.example.com,SUCCESS
+2026-10-02,C004,Tom Okafor,TO-290,1 x edited video,1200.00,tom.okafor.brightloom@personal.example.com,SUCCESS
+2026-10-02,C005,Lena Fischer,LF-291,2 x illustration,900.00,lena.fischer.brightloom@personal.example.com,SUCCESS
+2026-10-02,C006,Sam Whitfield,SW-292,15 x hour,825.00,sam.whitfield.brightloom@personal.example.com,SUCCESS
+2026-10-02,C007,Kofi Mensah,KM-293,36 x hour,2880.00,kofi.mensah.brightloom@personal.example.com,SUCCESS
+2026-10-02,C008,Aiko Tanaka,AT-294,"8,000 x word",1120.00,aiko.tanaka.brightloom@personal.example.com,SUCCESS
+2026-10-09,C001,Maya Chen,MC-290,34 x hour,2890.00,maya.chen.brightloom@personal.example.com,SUCCESS
+2026-10-09,C002,Diego Ramos,DR-291,4 x blog post,1440.00,diego.ramos.brightloom@personal.example.com,SUCCESS
+2026-10-09,C003,Priya Nair,PN-292,39 x hour,3276.00,priya.nair.brightloom@personal.example.com,SUCCESS
+2026-10-09,C004,Tom Okafor,TO-293,2 x edited video,2400.00,tom.okafor.brightloom@personal.example.com,SUCCESS
+2026-10-09,C005,Lena Fischer,LF-294,2 x illustration,900.00,lena.fischer.brightloom@personal.example.com,SUCCESS
+2026-10-09,C006,Sam Whitfield,SW-295,24 x hour,1320.00,sam.whitfield.brightloom@personal.example.com,SUCCESS
+2026-10-09,C007,Kofi Mensah,KM-296,38 x hour,3040.00,kofi.mensah.brightloom@personal.example.com,SUCCESS
+2026-10-09,C008,Aiko Tanaka,AT-297,"5,000 x word",700.00,aiko.tanaka.brightloom@personal.example.com,SUCCESS
+2026-10-16,C001,Maya Chen,MC-293,40 x hour,3400.00,maya.chen.brightloom@personal.example.com,SUCCESS
+2026-10-16,C002,Diego Ramos,DR-294,2 x blog post,720.00,diego.ramos.brightloom@personal.example.com,SUCCESS
+2026-10-16,C003,Priya Nair,PN-295,41 x hour,3444.00,priya.nair.brightloom@personal.example.com,SUCCESS
+2026-10-16,C004,Tom Okafor,TO-296,2 x edited video,2400.00,tom.okafor.brightloom@personal.example.com,SUCCESS
+2026-10-16,C005,Lena Fischer,LF-297,2 x illustration,900.00,lena.fischer.brightloom@personal.example.com,SUCCESS
+2026-10-16,C006,Sam Whitfield,SW-298,22 x hour,1210.00,sam.whitfield.brightloom@personal.example.com,SUCCESS
+2026-10-16,C007,Kofi Mensah,KM-299,30 x hour,2400.00,kofi.mensah.brightloom@personal.example.com,SUCCESS
+2026-10-16,C008,Aiko Tanaka,AT-300,"7,400 x word",1036.00,aiko.tanaka.brightloom@personal.example.com,SUCCESS
+2026-10-23,C001,Maya Chen,MC-296,40 x hour,3400.00,maya.chen.brightloom@personal.example.com,SUCCESS
+2026-10-23,C002,Diego Ramos,DR-297,2 x blog post,720.00,diego.ramos.brightloom@personal.example.com,SUCCESS
+2026-10-23,C003,Priya Nair,PN-298,46 x hour,3864.00,priya.nair.brightloom@personal.example.com,SUCCESS
+2026-10-23,C004,Tom Okafor,TO-299,3 x edited video,3600.00,tom.okafor.brightloom@personal.example.com,SUCCESS
+2026-10-23,C005,Lena Fischer,LF-300,2 x illustration,900.00,lena.fischer.brightloom@personal.example.com,SUCCESS
+2026-10-23,C006,Sam Whitfield,SW-301,23 x hour,1265.00,sam.whitfield.brightloom@personal.example.com,SUCCESS
+2026-10-23,C007,Kofi Mensah,KM-302,32 x hour,2560.00,kofi.mensah.brightloom@personal.example.com,SUCCESS
+2026-10-23,C008,Aiko Tanaka,AT-303,"6,200 x word",868.00,aiko.tanaka.brightloom@personal.example.com,SUCCESS
+2026-10-30,C001,Maya Chen,MC-299,35 x hour,2975.00,maya.chen.brightloom@personal.example.com,SUCCESS
+2026-10-30,C002,Diego Ramos,INV-117,Blog series - October (4 posts),1440.00,diego.ramos.brightloom@personal.example.com,SUCCESS
+2026-10-30,C003,Priya Nair,PN-301,47 x hour,3948.00,priya.nair.brightloom@personal.example.com,SUCCESS
+2026-10-30,C004,Tom Okafor,TO-302,2 x edited video,2400.00,tom.okafor.brightloom@personal.example.com,SUCCESS
+2026-10-30,C005,Lena Fischer,LF-303,4 x illustration,1800.00,lena.fischer.brightloom@personal.example.com,SUCCESS
+2026-10-30,C006,Sam Whitfield,SW-304,24 x hour,1320.00,sam.whitfield.brightloom@personal.example.com,SUCCESS
+2026-10-30,C007,Kofi Mensah,KM-305,31 x hour,2480.00,kofi.mensah.brightloom@personal.example.com,SUCCESS
+2026-10-30,C008,Aiko Tanaka,AT-306,"7,400 x word",1036.00,aiko.tanaka.brightloom@personal.example.com,SUCCESS

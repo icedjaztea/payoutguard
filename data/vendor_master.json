@@ -1,0 +1,95 @@
+{
+  "company": {
+    "name": "Brightloom Studio Pte. Ltd.",
+    "address": "21 Carpenter Street, #04-02, Singapore 059984",
+    "ap_email": "payables@brightloom.studio"
+  },
+  "engagement_pm": {
+    "name": "Daniel Koh",
+    "title": "Engagement PM",
+    "email": "daniel.koh@brightloom.studio"
+  },
+  "contractors": [
+    {
+      "id": "C001",
+      "name": "Maya Chen",
+      "role": "UI designer",
+      "rate": 85,
+      "unit": "hour",
+      "weekly_cap": 45,
+      "paypal_email": "maya.chen.brightloom@personal.example.com",
+      "contact_email": "maya@mayachen.design"
+    },
+    {
+      "id": "C002",
+      "name": "Diego Ramos",
+      "role": "Copywriter",
+      "rate": 360,
+      "unit": "blog post",
+      "weekly_cap": null,
+      "paypal_email": "diego.ramos.brightloom@personal.example.com",
+      "contact_email": "diego@ramoswrites.com"
+    },
+    {
+      "id": "C003",
+      "name": "Priya Nair",
+      "role": "Frontend developer",
+      "rate": 84,
+      "unit": "hour",
+      "weekly_cap": 50,
+      "paypal_email": "priya.nair.brightloom@personal.example.com",
+      "contact_email": "priya@nair.dev"
+    },
+    {
+      "id": "C004",
+      "name": "Tom Okafor",
+      "role": "Video editor",
+      "rate": 1200,
+      "unit": "edited video",
+      "weekly_cap": null,
+      "paypal_email": "tom.okafor.brightloom@personal.example.com",
+      "contact_email": "tom@okaforedits.com"
+    },
+    {
+      "id": "C005",
+      "name": "Lena Fischer",
+      "role": "Illustrator",
+      "rate": 450,
+      "unit": "illustration",
+      "weekly_cap": null,
+      "paypal_email": "lena.fischer.brightloom@personal.example.com",
+      "contact_email": "lena@lenafischer.art"
+    },
+    {
+      "id": "C006",
+      "name": "Sam Whitfield",
+      "role": "QA tester",
+      "rate": 55,
+      "unit": "hour",
+      "weekly_cap": 40,
+      "paypal_email": "sam.whitfield.brightloom@personal.example.com",
+      "contact_email": "sam.whitfield@qa-mail.net"
+    },
+    {
+      "id": "C007",
+      "name": "Kofi Mensah",
+      "role": "Motion designer",
+      "rate": 80,
+      "unit": "hour",
+      "weekly_cap": 45,
+      "paypal_email": "kofi.mensah.brightloom@personal.example.com",
+      "contact_email": "kofi@mensahmotion.com"
+    },
+    {
+      "id": "C008",
+      "name": "Aiko Tanaka",
+      "role": "Translator (JA-EN)",
+      "rate": 0.14,
+      "unit": "word",
+      "weekly_cap": null,
+      "paypal_email": "aiko.tanaka.brightloom@personal.example.com",
+      "contact_email": "aiko@tanaka-translate.jp"
+    }
+  ],
+  "payee_change_requests_on_file": []
+}
