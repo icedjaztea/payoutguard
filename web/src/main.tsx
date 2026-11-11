@@ -2,11 +2,12 @@ import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   ArrowDownLeft, ArrowRight, ArrowUpRight, Check, CircleAlert, FileText, Image,
-  Inbox, Layers3, LoaderCircle, Mail, RotateCcw, ScanLine, ShieldCheck, Wallet, X,
+  Inbox, LoaderCircle, Mail, RotateCcw, ScanLine, ShieldCheck, Wallet, X,
 } from 'lucide-react'
 import { api, demoBilled, isMock, type Batch, type Run, type Verdict } from './api'
-import '@fontsource-variable/inter'
-import '@fontsource-variable/manrope'
+import '@fontsource/ibm-plex-sans/400.css'
+import '@fontsource/ibm-plex-sans/500.css'
+import '@fontsource/ibm-plex-sans/600.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import './styles.css'
 
@@ -265,7 +266,7 @@ function App() {
 
     <main className="frame grow">
       <section className="page-title">
-        <div><div className="eyebrow">Contractor payments</div><h1>Friday payout run</h1></div>
+        <div><div className="eyebrow">Payments / Weekly run</div><h1>Friday payout run</h1></div>
         <span className="run-date"><span className="dot" /> 06 NOV 2026 <span className="date-divider">/</span> USD</span>
       </section>
 
@@ -303,6 +304,7 @@ function App() {
 
         <section className="panel review" aria-labelledby="review-title">
           <header className="panel-heading"><div><h2 id="review-title"><ShieldCheck size={18} /> Audit verdicts</h2><p>{audited ? 'Select a verdict to review the evidence.' : 'Invoice, contract and payee checks'}</p></div><code>{revealed}/{files.length} audited</code></header>
+          <div className="ledger-heading" aria-hidden="true"><span>Contractor / audit decision</span><span>Billed → Approved</span></div>
           <ul className="verdict-cards">
             {files.map((file, index) => {
               const verdict = index < revealed ? run?.audit_results[file] : undefined
@@ -325,7 +327,7 @@ function App() {
         </section>
 
         <section className="panel payout" aria-labelledby="payout-title">
-          <header className="panel-heading"><div><h2 id="payout-title"><Wallet size={18} /> Payout tray</h2><p>PayPal Payouts</p></div><span className="paypal" aria-label="PayPal">Pay<span>Pal</span></span></header>
+          <header className="panel-heading"><div><h2 id="payout-title"><Wallet size={18} /> Payout tray</h2><p>PayPal Payouts</p></div><span className="paypal">USD</span></header>
           {run?.batch ? <div className="batch-body">
             <div className="batch-summary"><div><span>Initial payout</span><strong>{money(run.batch.items.reduce((sum, item) => sum + item.amount, 0))}</strong></div><span className="completion">{paidCount}/{run.batch.items.length} sent</span></div>
             <BatchList batch={run.batch} />
@@ -338,7 +340,6 @@ function App() {
             {run.top_up_batch && <BatchList batch={run.top_up_batch} topUp />}
           </div> : <>
             <div className="tray-empty">
-              <div className="tray-art" aria-hidden="true"><span /><span /><div>{audited ? <ShieldCheck size={34} strokeWidth={1.5} /> : <Layers3 size={34} strokeWidth={1.5} />}</div></div>
               <h3>{audited ? 'Ready for approval' : 'Awaiting audit'}</h3>
               <p>{audited ? `${payables} invoices are payable. Review any flagged documents before releasing the batch.` : 'Audit the inbox to check invoice amounts, contract terms, and payee details.'}</p>
               {audited && <div className="tray-breakdown"><span><Check size={15} /> Payable <strong>{money(paying)}</strong></span><span><CircleAlert size={15} /> Stopped <strong>{money(stopped)}</strong></span></div>}
