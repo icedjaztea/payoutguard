@@ -108,13 +108,21 @@ def list_runs():
 @app.get("/api/runs/{run_id}")
 def get_run(run_id: str, refresh: bool = Query(False, description="re-fetch the Payouts batch from PayPal")):
     run = recompute_totals(_run_or_404(run_id))
-    batch = run.get("batch")
-    if refresh and batch and batch.get("payout_batch_id"):
-        try:
-            run["batch"] = PP.summarize_batch(PP.get_payout(batch["payout_batch_id"]))
-            store.save(run)
-        except PP.PayPalError as e:
-            run["errors"] = run.get("errors", []) + [str(e)]
+    if refresh:
+        # Poll fallback for the webhook: re-read every batch this run has sent, top-ups included.
+        for batch in store.batches(run):
+            bid = batch.get("payout_batch_id")
+            if not bid:
+                continue
+            try:
+                fresh = PP.summarize_batch(PP.get_payout(bid))
+            except PP.PayPalError as e:
+                run["errors"] = run.get("errors", []) + [str(e)]
+                continue
+            batch["batch_status"] = fresh.get("batch_status") or batch.get("batch_status")
+            batch["amount"] = fresh.get("amount") or batch.get("amount")
+            batch["items"] = fresh.get("items") or batch.get("items")
+        store.save(run)
     return run
 
 

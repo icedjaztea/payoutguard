@@ -212,6 +212,44 @@ def test_a_top_up_batch_is_updated_too(client, runs, allow_unverified):
     assert saved["items"][0]["transaction_status"] == "SUCCESS"
 
 
+# ----------------------------------------------------------------- poll fallback
+def test_refresh_polls_every_batch_including_top_ups(client, runs, monkeypatch):
+    run = approved_run()
+    run["appeals"] = {"scan_0042.pdf": {"file": "scan_0042.pdf", "decision": "TOP_UP", "top_up_amount": 650.0,
+                                        "batch": {"payout_batch_id": "TOPUP1", "batch_status": "PENDING",
+                                                  "items": [{"payout_item_id": "TOPUPITEM1",
+                                                             "sender_item_id": "topup-C003",
+                                                             "transaction_status": "PENDING"}]}}}
+    store.save(run)
+    asked = []
+
+    def fake_get(batch_id, token=None):
+        asked.append(batch_id)
+        return {"batch_header": {"payout_batch_id": batch_id, "batch_status": "SUCCESS",
+                                 "amount": {"value": "650.00", "currency": "USD"}},
+                "items": [{"payout_item_id": "X", "transaction_status": "SUCCESS",
+                           "payout_item": {"sender_item_id": "s", "amount": {"value": "650.00"}}}]}
+
+    monkeypatch.setattr("app.main.PP.get_payout", fake_get)
+    state = client.get(f"/api/runs/{run['run_id']}", params={"refresh": True}).json()
+    assert sorted(asked) == ["BATCHMAIN1", "TOPUP1"]
+    assert state["batch"]["batch_status"] == "SUCCESS"
+    assert state["appeals"]["scan_0042.pdf"]["batch"]["batch_status"] == "SUCCESS"
+    assert store.load(run["run_id"])["appeals"]["scan_0042.pdf"]["batch"]["batch_status"] == "SUCCESS"
+
+
+def test_refresh_survives_a_paypal_error(client, runs, monkeypatch):
+    run = approved_run()
+
+    def boom(batch_id, token=None):
+        raise PP.PayPalError(500, {"name": "INTERNAL"}, "get batch")
+
+    monkeypatch.setattr("app.main.PP.get_payout", boom)
+    state = client.get(f"/api/runs/{run['run_id']}", params={"refresh": True}).json()
+    assert state["batch"]["batch_status"] == "PENDING"
+    assert any("get batch" in e for e in state["errors"])
+
+
 # ----------------------------------------------------------------- the pure applier
 def test_apply_webhook_event_is_callable_without_http(runs):
     run = approved_run()
