@@ -1,4 +1,4 @@
-import snapshot from './audit_results.fixture.json'
+import snapshot from './mock/audit_results.json'
 
 export type Decision = 'PAY' | 'SHORT_PAY' | 'HOLD_DUPLICATE' | 'QUARANTINE_PAYEE'
 type Finding = { code: string; clause: string | null; explanation: string; evidence: string }
@@ -34,9 +34,7 @@ export type Run = {
   audit_error?: string
 }
 
-const generated = import.meta.glob('../../out/audit_results.json', { eager: true, import: 'default' })
-const fixture = (generated['../../out/audit_results.json'] ?? snapshot) as Record<string, Verdict | Appeal>
-const assets = import.meta.glob('../../data/inbox/*.{pdf,jpg}', { eager: true, import: 'default', query: '?url' })
+const fixture = snapshot as Record<string, Verdict | Appeal>
 const order = [
   'scan_0042.pdf', 'Document (3).pdf', 'invoice.pdf', 'IMG_1234.jpg',
   'scan_0043.pdf', 'final_FINAL_v2.pdf', 'IMG_1301.jpg', '20261105_invoice.pdf',
@@ -44,12 +42,19 @@ const order = [
 const verdicts = Object.fromEntries(order.map(file => [file, fixture[file] as Verdict]))
 export const demoBilled = order.reduce((sum, file) => sum + verdicts[file].billed_total, 0)
 
-const configuredBase = import.meta.env.VITE_API_BASE?.trim()
-export const isMock = !configuredBase
-const base = configuredBase === '.' ? '' : configuredBase?.replace(/\/+$/, '')
+export const isMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK === 'true'
+
+class HttpError extends Error {
+  constructor(readonly status: number, path: string) {
+    super(`Server returned HTTP ${status} for ${path}.`)
+  }
+}
+
+const mockDelay = () => new Promise<void>(resolve => window.setTimeout(resolve, 220))
+
 async function request(path: string, method = 'GET'): Promise<Response> {
-  const response = await fetch(`${base}${path}`, { method, cache: 'no-store' })
-  if (!response.ok) throw new Error(`Server returned HTTP ${response.status} for ${path}.`)
+  const response = await fetch(path, { method, cache: 'no-store' })
+  if (!response.ok) throw new HttpError(response.status, path)
   return response
 }
 
@@ -127,21 +132,31 @@ function mockBatch(items: Omit<Payment, 'status'>[]): Batch {
 function settle(batch: Batch | undefined, started: number): Batch | undefined {
   return batch && {
     ...batch,
-    items: batch.items.map((item, index) => ({
+    items: batch.items.map(item => ({
       ...item,
-      status: Date.now() - started >= 1500 + 620 * index ? 'SUCCESS' : 'PENDING',
+      status: Date.now() - started >= 3000 ? 'SUCCESS' : 'PENDING',
     })),
   }
 }
 
 async function openRun(path: string): Promise<Run> {
-  if (isMock) return newMockRun()
+  if (isMock) { await mockDelay(); return newMockRun() }
   const result = await read<{ run_id: string }>(path, 'POST')
   return api.get(result.run_id)
 }
 
 const runPath = (id: string) => `/api/runs/${encodeURIComponent(id)}`
 export const api = {
+  async current(): Promise<Run | undefined> {
+    if (isMock) return mock ? api.get(mock.run_id) : undefined
+    try {
+      const current = await read<ServerRun | null>('/api/runs/current')
+      return current?.run_id ? normalizeRun(current) : undefined
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 404) return
+      throw error
+    }
+  },
   create: () => openRun('/api/runs'),
   reset: () => openRun('/api/reset'),
   async get(id: string, refresh = false): Promise<Run> {
@@ -151,11 +166,12 @@ export const api = {
   },
   async audit(id: string) {
     if (!isMock) await request(`${runPath(id)}/audit`, 'POST')
-    else mock = { ...mock, audit_results: verdicts }
+    else { await mockDelay(); mock = { ...mock, audit_results: verdicts } }
   },
   async approve(id: string) {
     if (!isMock) await request(`${runPath(id)}/approve`, 'POST')
     else if (!mock.batch) {
+      await mockDelay()
       batchStarted = Date.now()
       const items = Object.entries(mock.audit_results)
         .filter(([, verdict]) => verdict.approved_amount > 0)
@@ -166,6 +182,7 @@ export const api = {
   async appeal(id: string, file: string) {
     if (!isMock) await request(`${runPath(id)}/appeals/${encodeURIComponent(file)}`, 'POST')
     else if (!mock.appeal) {
+      await mockDelay()
       const appeal = fixture[`_appeal_${file}`] as Appeal
       if (!appeal) throw new Error('There is no reply for this invoice.')
       topUpStarted = Date.now()
@@ -180,6 +197,6 @@ export const api = {
     }
   },
   file(file: string) {
-    return isMock ? assets[`../../data/inbox/${file}`] as string : `${base}/files/${encodeURIComponent(file)}`
+    return `/files/${encodeURIComponent(file)}`
   },
 }

@@ -18,6 +18,18 @@ const terminal = (status: string) => ['SUCCESS', 'FAILED', 'RETURNED', 'BLOCKED'
 const settled = (batch?: Batch) => Boolean(batch?.items.length && batch.items.every(item => terminal(item.status)))
 const pause = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
 const thumbnails = import.meta.glob('./thumbnails/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>
+const cardReasons: Partial<Record<Verdict['decision'], string>> = {
+  SHORT_PAY: 'Rush surcharge needs written pre-approval.',
+  HOLD_DUPLICATE: 'The same work was already paid.',
+  QUARANTINE_PAYEE: 'Payee change could not be verified.',
+}
+const payReasons: Record<string, string> = {
+  'IMG_1234.jpg': 'Three illustrations match the contracted rate.',
+  'scan_0043.pdf': 'Design hours match the rate and weekly cap.',
+  'final_FINAL_v2.pdf': 'Motion design hours match the rate and weekly cap.',
+  'IMG_1301.jpg': 'QA hours are within the cap at the contracted rate.',
+  '20261105_invoice.pdf': 'Translation matches the contracted per-word rate.',
+}
 const replyFile = 'scan_0042.pdf'
 const errorText = (cause: unknown) => cause instanceof Error ? cause.message : String(cause)
 
@@ -47,7 +59,7 @@ function Amount({ value }: { value: number }) {
 }
 
 function BatchList({ batch, topUp = false }: { batch: Batch; topUp?: boolean }) {
-  return <section className="batch">
+  return <section className="batch" data-testid={topUp ? 'top-up-batch' : 'payout-batch'}>
     <div className="batch-meta"><span>{topUp ? 'Top-up batch' : 'PayPal batch ID'}</span><code>{batch.batch_id}</code></div>
     <ul>{batch.items.map(item => <li key={item.file}>
       <span>{item.contractor_name}{topUp && <small> · Top-up</small>}</span>
@@ -65,6 +77,7 @@ function Drawer({ file, verdict, run, close }: { file: string; verdict?: Verdict
   const url = api.file(file)
   const [pdf, setPdf] = useState<string>()
   const [previewError, setPreviewError] = useState(false)
+  const [showAllFindings, setShowAllFindings] = useState(false)
   useEffect(() => {
     if (isMock || !/\.pdf$/i.test(file)) return
     const controller = new AbortController()
@@ -91,7 +104,7 @@ function Drawer({ file, verdict, run, close }: { file: string; verdict?: Verdict
     <div className="drawer-shell">
       <header className="drawer-header">
         <div><div className="eyebrow">Document review</div><h2 id="drawer-title">{file}</h2></div>
-        <button autoFocus className="icon-button" aria-label="Close document review" onClick={close}><X size={22} /></button>
+        <button data-testid="close-drawer" autoFocus className="icon-button" aria-label="Close document review" onClick={close}><X size={22} /></button>
       </header>
       <div className="drawer-grid">
         <section className="preview">
@@ -102,7 +115,7 @@ function Drawer({ file, verdict, run, close }: { file: string; verdict?: Verdict
           {verdict ? <>
             <div className="finding-title"><div><h3>{verdict.contractor_name}</h3><code>{verdict.invoice_number}</code></div><span className={`verdict ${verdict.decision}`}>{decisions[verdict.decision]}</span></div>
             <div className="detail-amount"><span>Billed <strong>{money(verdict.billed_total)}</strong></span><span>Approved <strong>{money(verdict.approved_amount)}</strong></span></div>
-            {appeal && <article className="finding">
+            {appeal && <article className="finding" data-testid="appeal-finding">
               <div className="tags"><span>AI finding</span>{appeal.clause && <span>Clause {appeal.clause}</span>}</div>
               <h4>Appeal decision · {appeal.decision === 'TOP_UP' ? `Top-up ${money(appeal.top_up_amount)}` : appeal.decision}</h4>
               <p>{appeal.reasoning}</p><blockquote>{appeal.evidence}</blockquote>
@@ -110,10 +123,13 @@ function Drawer({ file, verdict, run, close }: { file: string; verdict?: Verdict
             {verdict.guardrail_flags.map(flag => <article className="finding" key={flag}>
               <div className="tags"><span className="rule">Rule check</span></div><blockquote>{flag}</blockquote>
             </article>)}
-            {verdict.findings.map((finding, index) => <div key={finding.code}><article className="finding">
+            {verdict.findings.slice(0, showAllFindings ? undefined : 1).map((finding, index) => <div key={finding.code}><article className="finding">
               <div className="tags"><span>AI finding</span>{finding.clause && <span>Clause {finding.clause}</span>}</div>
               <p>{finding.explanation}</p><blockquote>{finding.evidence}</blockquote>
             </article>{index === 0 && <article className="finding remittance"><h4>Remittance note preview</h4><p>{appeal?.remittance_note ?? verdict.remittance_note}</p></article>}</div>)}
+            {verdict.findings.length > 1 && <button data-testid="toggle-findings" className="secondary" aria-expanded={showAllFindings} onClick={() => setShowAllFindings(value => !value)}>
+              {showAllFindings ? 'Show primary finding' : `Show ${verdict.findings.length - 1} more findings`}
+            </button>}
             {!verdict.findings.length && <article className="finding remittance"><h4>Remittance note preview</h4><p>{appeal?.remittance_note ?? verdict.remittance_note}</p></article>}
           </> : <p className="muted">Run the audit to see findings and the remittance note.</p>}
         </section>
@@ -135,7 +151,10 @@ function App() {
   useEffect(() => {
     if (started.current) return
     started.current = true
-    api.create().then(setRun).catch(cause => setError(errorText(cause)))
+    api.current().then(current => current ?? api.create()).then(next => {
+      setRun(next)
+      if (next.files.every(file => next.audit_results[file])) setRevealed(next.files.length)
+    }).catch(cause => setError(errorText(cause)))
   }, [])
 
   const id = run?.run_id
@@ -147,13 +166,13 @@ function App() {
     const refresh = async () => {
       try {
         const next = await api.get(id, true)
-        if (active) setRun(next)
+        if (active) { setRun(next); setError('') }
       } catch (cause) {
         if (active) setError(errorText(cause))
       }
-      if (active) timer = window.setTimeout(refresh, isMock ? 350 : 5000)
+      if (active) timer = window.setTimeout(refresh, 2000)
     }
-    timer = window.setTimeout(refresh, isMock ? 350 : 5000)
+    timer = window.setTimeout(refresh, 2000)
     return () => { active = false; clearTimeout(timer) }
   }, [id, poll, action])
 
@@ -206,7 +225,7 @@ function App() {
     void perform('appeal', async () => {
       const current = await api.get(id)
       if (!current.appeal) await api.appeal(id, replyFile)
-      setRun(await awaitState(id, state => Boolean(state.appeal && (state.appeal.decision !== 'TOP_UP' || state.top_up_batch))))
+      setRun(await awaitState(id, state => Boolean(state.appeal && (state.appeal.decision !== 'TOP_UP' || state.appeal.top_up_amount <= 0 || state.top_up_batch))))
       setToastDismissed(true)
     })
   }
@@ -224,12 +243,13 @@ function App() {
   const files = run?.files ?? []
   const audited = files.length > 0 && revealed === files.length
   const visible = files.slice(0, revealed).map(file => run?.audit_results[file]).filter(Boolean) as Verdict[]
-  const billed = audited && !isMock ? visible.reduce((sum, v) => sum + v.billed_total, 0) : isMock ? demoBilled : 0
+  const billed = isMock && run ? demoBilled : visible.reduce((sum, v) => sum + v.billed_total, 0)
   const paying = visible.reduce((sum, v) => sum + v.approved_amount, 0)
   const stopped = visible.reduce((sum, v) => sum + v.billed_total - v.approved_amount, 0)
   const topUp = run?.top_up_batch?.items.filter(item => item.status === 'SUCCESS').reduce((sum, item) => sum + item.amount, 0) ?? 0
+  const protectedAmount = settled(run?.batch) ? stopped - topUp : 0
   const paidReplyInvoice = run?.batch?.items.some(item => item.file === replyFile && item.status === 'SUCCESS')
-  const replyReady = Boolean(settled(run?.batch) && paidReplyInvoice && !run?.appeal)
+  const replyReady = Boolean(run?.batch?.items.length && run.batch.items.every(item => item.status === 'SUCCESS') && paidReplyInvoice && !run?.appeal)
   const paidCount = run?.batch?.items.filter(item => item.status === 'SUCCESS').length ?? 0
   const payables = visible.filter(v => v.approved_amount > 0).length
   const exceptions = visible.filter(v => v.decision !== 'PAY').length
@@ -239,7 +259,7 @@ function App() {
       <div className="frame flex items-center justify-between">
         <div className="brand"><span className="brand-icon"><ShieldCheck size={22} strokeWidth={2.2} /></span><span>PayoutGuard</span><span className="brand-divider" /><small>Brightloom Studio</small></div>
         <div className="flex items-center gap-4"><span className="environment"><span className="dot" />{isMock ? 'Demo mode' : 'Sandbox'}</span>
-          <button className="secondary" onClick={reset} disabled={Boolean(action)}><RotateCcw size={15} /> Reset demo</button></div>
+          <button data-testid="reset" className="secondary" onClick={reset} disabled={Boolean(action)}><RotateCcw size={15} /> Reset</button></div>
       </div>
     </header>
 
@@ -250,31 +270,55 @@ function App() {
       </section>
 
       <section className="metrics" aria-label="Run totals">
-        <div className="metric"><span>Billed</span><strong><Amount value={billed} /></strong><small>{files.length} source documents</small></div>
-        <div className="metric paying"><span>{topUp ? 'Paid / approved' : 'Paying'}</span><strong><Amount value={paying + topUp} /></strong><small>{audited ? `${payables} payable invoices` : 'Awaiting audit'}</small></div>
-        <div className="metric stopped"><span>{topUp ? 'Protected' : 'Stopped'}</span><strong><Amount value={stopped - topUp} /></strong><small>{topUp ? 'Duplicate and payee hold' : audited ? `${exceptions} flagged invoices` : 'Awaiting audit'}</small></div>
+        <div className="metric" data-testid="counter-billed"><span>Billed</span><strong><Amount value={billed} /></strong><small>{files.length} source documents</small></div>
+        <div className="metric" data-testid="counter-paying"><span>Paying</span><strong><Amount value={paying + topUp} /></strong><small>{audited ? `${payables} payable invoices` : 'Awaiting audit'}</small></div>
+        <div className="metric" data-testid="counter-stopped"><span>Stopped</span><strong><Amount value={stopped} /></strong><small>{audited ? `${exceptions} flagged at audit` : 'Awaiting audit'}</small></div>
+        <div className="metric protected" data-testid="counter-protected"><span>Protected</span><strong><Amount value={protectedAmount} /></strong><small>{topUp ? 'After appeal' : settled(run?.batch) ? 'Withheld from payout' : 'After payout'}</small></div>
       </section>
 
-      {error && <div className="error" role="alert"><CircleAlert size={17} />{error}<button className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}><X size={16} /></button></div>}
+      {error && <div className="error" role="alert"><CircleAlert size={17} />{error}<button data-testid="dismiss-error" className="icon-button" aria-label="Dismiss error" onClick={() => setError('')}><X size={16} /></button></div>}
 
       <div className="workbench">
         <section className="panel inbox" aria-labelledby="inbox-title">
-          <header className="panel-heading"><div><h2 id="inbox-title"><Inbox size={18} /> Document inbox</h2><p>{audited ? 'Select an invoice to review its evidence.' : 'Source invoices queued for audit.'}</p></div><code>{audited ? `${revealed}/${files.length} audited` : `${files.length} files`}</code></header>
+          <header className="panel-heading"><div><h2 id="inbox-title"><Inbox size={18} /> Inbox</h2><p>{files.length} source documents</p></div></header>
           <ul className="documents">
             {files.map((file, index) => {
-              const verdict = index < revealed ? run?.audit_results[file] : undefined
-              const fullyPaid = paidReplyInvoice && file === run?.appeal_file && verdict && verdict.approved_amount + topUp >= verdict.billed_total
               const isImage = /\.jpe?g$/i.test(file)
               const DocIcon = isImage ? Image : FileText
               const thumbnail = isMock ? (isImage ? api.file(file) : thumbnails[`./thumbnails/${file}.png`]) : undefined
-              return <li key={file}><button onClick={() => setSelected(file)} className={`document ${fullyPaid ? 'PAY' : verdict?.decision ?? 'queued'}`} type="button">
-                <span className="paper">{thumbnail ? <img src={thumbnail} alt="" /> : <DocIcon size={17} />}</span>
-                <span className="document-name"><strong>{file}</strong><small key={verdict ? 'reviewed' : 'queued'}>{verdict ? verdict.contractor_name : file.split('.').pop()?.toUpperCase() + ' document'}</small></span>
-                {verdict ? <span key="verdict" className="document-result">
+              return <li key={file}><button data-testid={`document-${file}`} onClick={() => setSelected(file)} className="document" type="button">
+                <span className="paper">{thumbnail ? <img src={thumbnail} alt="" /> : <DocIcon size={16} />}</span>
+                <span className="document-name"><strong>{file}</strong></span>
+                {index < revealed ? <Check size={15} className="document-arrow" /> : <ArrowUpRight size={15} className="document-arrow" />}
+              </button></li>
+            })}
+          </ul>
+          <div className="tray-action">
+            <button data-testid="audit-run" className="primary" onClick={audit} disabled={!run || Boolean(action) || audited}>
+              {action === 'audit' ? <LoaderCircle size={16} /> : audited ? <Check size={16} /> : <ScanLine size={16} />}
+              {action === 'audit' ? 'Auditing…' : audited ? 'Audit complete' : "Audit this week's run"}
+            </button>
+          </div>
+        </section>
+
+        <section className="panel review" aria-labelledby="review-title">
+          <header className="panel-heading"><div><h2 id="review-title"><ShieldCheck size={18} /> Audit verdicts</h2><p>{audited ? 'Select a verdict to review the evidence.' : 'Invoice, contract and payee checks'}</p></div><code>{revealed}/{files.length} audited</code></header>
+          <ul className="verdict-cards">
+            {files.map((file, index) => {
+              const verdict = index < revealed ? run?.audit_results[file] : undefined
+              if (!verdict) return <li key={file} className="verdict-slot" aria-hidden="true" />
+              const settledTopUp = file === run?.appeal_file ? topUp : 0
+              const approved = verdict.approved_amount + settledTopUp
+              const fullyPaid = settledTopUp > 0 && approved >= verdict.billed_total
+              const clause = verdict.findings.find(finding => finding.clause)?.clause
+              const reason = fullyPaid ? 'Written approval confirmed on appeal.' : cardReasons[verdict.decision] ?? payReasons[file] ?? verdict.findings[0]?.explanation
+              return <li key={file}><button type="button" data-testid={`verdict-${file}`} className={`verdict-card ${fullyPaid ? 'PAY' : verdict.decision}`} onClick={() => setSelected(file)}>
+                <span className="card-top">
+                  <strong>{verdict.contractor_name}</strong>
                   <span className={`verdict ${fullyPaid ? 'PAY' : verdict.decision}`}>{fullyPaid ? 'Paid in full after evidence' : decisions[verdict.decision]}</span>
-                  <strong>{money(verdict.billed_total)}</strong>
-                </span> : <span className="queued-label">Queued</span>}
-                <ArrowUpRight size={15} className="document-arrow" />
+                  <span className="card-amount">{money(verdict.billed_total)} <span aria-label="approved to">→</span> <b>{money(approved)}</b></span>
+                </span>
+                <span className="card-bottom">{clause && <span className="clause">cl. {clause}</span>}<span className="card-reason" title={reason}>{reason}</span></span>
               </button></li>
             })}
           </ul>
@@ -285,11 +329,11 @@ function App() {
           {run?.batch ? <div className="batch-body">
             <div className="batch-summary"><div><span>Initial payout</span><strong>{money(run.batch.items.reduce((sum, item) => sum + item.amount, 0))}</strong></div><span className="completion">{paidCount}/{run.batch.items.length} sent</span></div>
             <BatchList batch={run.batch} />
-            {replyReady && <button className="reply-button" onClick={reviewReply} disabled={Boolean(action)}><Mail size={16} /> {action === 'appeal' ? 'Checking approval…' : 'Review contractor reply'}<ArrowRight size={15} /></button>}
+            {replyReady && <button data-testid="review-reply-tray" className="reply-button" onClick={reviewReply} disabled={Boolean(action)}><Mail size={16} /> {action === 'appeal' ? 'Checking approval…' : 'Review evidence'}<ArrowRight size={15} /></button>}
             {run.appeal && <div className="appeal">
               <div className="appeal-heading"><Mail size={16} /><strong>Priya’s appeal</strong>{run.appeal.clause && <span>Clause {run.appeal.clause}</span>}</div>
               <p>{run.appeal.reasoning}</p>
-              <button className="text-button" onClick={() => setSelected(run.appeal_file ?? replyFile)}>View evidence <ArrowUpRight size={13} /></button>
+              <button data-testid="open-appeal-drawer" className="text-button" onClick={() => setSelected(run.appeal_file ?? replyFile)}>View evidence <ArrowUpRight size={13} /></button>
             </div>}
             {run.top_up_batch && <BatchList batch={run.top_up_batch} topUp />}
           </div> : <>
@@ -300,9 +344,9 @@ function App() {
               {audited && <div className="tray-breakdown"><span><Check size={15} /> Payable <strong>{money(paying)}</strong></span><span><CircleAlert size={15} /> Stopped <strong>{money(stopped)}</strong></span></div>}
             </div>
             <div className="tray-action">
-              <button className="primary" onClick={audited ? approve : audit} disabled={!run || Boolean(action) || (audited && !payables)}>
-                {action === 'audit' || action === 'approve' ? <LoaderCircle className="spin" size={18} /> : audited ? <ArrowDownLeft size={18} /> : <ScanLine size={18} />}
-                {action === 'audit' ? 'Auditing documents…' : action === 'approve' ? 'Submitting batch…' : audited ? 'Approve & pay' : 'Audit run'}
+              <button data-testid="approve-pay" className="primary" onClick={approve} disabled={!audited || Boolean(action) || !payables}>
+                {action === 'approve' ? <LoaderCircle size={18} /> : <ArrowDownLeft size={18} />}
+                {action === 'approve' ? 'Submitting batch…' : 'Approve & pay with PayPal'}
                 <ArrowRight size={17} className="action-arrow" />
               </button>
               <p>{audited ? 'Approval submits a single PayPal sandbox batch.' : 'Payments require your approval.'}</p>
@@ -312,11 +356,11 @@ function App() {
       </div>
     </main>
 
-    <footer className="frame footer">Synthetic data - PayPal sandbox - OpenAI</footer>
+    <footer className="frame footer">Synthetic data · PayPal sandbox · OpenAI</footer>
 
     {replyReady && !toastDismissed && !action && <aside className="toast" role="status">
-      <span className="toast-icon"><Mail size={19} /></span><div><strong>Contractor replied</strong><p>Priya forwarded written PM approval.</p><button className="text-button" onClick={reviewReply}>Review reply <ArrowRight size={14} /></button></div>
-      <button className="icon-button" aria-label="Dismiss reply notification" onClick={() => setToastDismissed(true)}><X size={17} /></button>
+      <span className="toast-icon"><Mail size={19} /></span><div><strong>Priya Nair replied</strong><p>Priya forwarded written PM approval.</p><button data-testid="review-evidence" className="text-button" onClick={reviewReply}>Review evidence <ArrowRight size={14} /></button></div>
+      <button data-testid="dismiss-reply" className="icon-button" aria-label="Dismiss reply notification" onClick={() => setToastDismissed(true)}><X size={17} /></button>
     </aside>}
     {selected && run && <Drawer file={selected} verdict={files.indexOf(selected) < revealed ? run.audit_results[selected] : undefined} run={run} close={() => setSelected(undefined)} />}
   </div>
