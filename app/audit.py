@@ -5,7 +5,8 @@ use exactly the same logic.
 
 Env:
   AI_PROVIDER=openai|gemini   OPENAI_API_KEY / OPENAI_MODEL  (or GEMINI_*)
-  AUDIT_MODE=live|cached      cached = reuse out/cache, never call the AI
+  AUDIT_MODE=cached (default) use a cached result if there is one, else call the AI and cache it
+  AUDIT_MODE=live             always call the AI and refresh the cache
 """
 import base64
 import csv
@@ -23,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 OUT = ROOT / "out"
 CACHE = OUT / "cache"
+COMMITTED_CACHE = DATA / "audit_cache.json"   # committed seed so a fresh deploy is fast
 INBOX = DATA / "inbox"
 TERMS = DATA / "contracts" / "brightloom_contractor_terms.pdf"
 DOC_SUFFIXES = (".pdf", ".jpg", ".jpeg", ".png")
@@ -44,8 +46,8 @@ def load_env():
 
 
 def audit_mode() -> str:
-    mode = os.environ.get("AUDIT_MODE", "live").strip().lower()
-    return mode if mode in ("live", "cached") else "live"
+    mode = os.environ.get("AUDIT_MODE", "cached").strip().lower()
+    return mode if mode in ("live", "cached") else "cached"
 
 
 # ----------------------------------------------------------------------------- schemas
@@ -313,6 +315,28 @@ def cache_write(key: str, audit: dict) -> None:
     cache_path(key).write_text(json.dumps(audit, indent=2))
 
 
+def committed_cache() -> dict:
+    if not COMMITTED_CACHE.exists():
+        return {}
+    try:
+        return json.loads(COMMITTED_CACHE.read_text())
+    except json.JSONDecodeError:
+        return {}
+
+
+def committed_read(key: str) -> Optional[dict]:
+    """Keyed by the file's own hash (invoices) or 'appeal-<file>' (appeals), so the committed
+    seed survives prompt tweaks and an empty out/."""
+    entry = committed_cache().get(key)
+    return dict(entry) if isinstance(entry, dict) else None
+
+
+def committed_write(entries: dict) -> None:
+    merged = committed_cache()
+    merged.update(entries)
+    COMMITTED_CACHE.write_text(json.dumps(merged, indent=2, sort_keys=True))
+
+
 def legacy_cache(name: str) -> Optional[dict]:
     """Fallback for AUDIT_MODE=cached before any cached run: reuse out/audit_results.json from the kill test."""
     p = OUT / "audit_results.json"
@@ -330,45 +354,41 @@ def audit_file(path: Path, provider: Optional[Provider] = None, *, use_guardrail
                history: Optional[list] = None, force: bool = False) -> dict:
     """Audit one invoice file. Returns the audit dict, with cache metadata under _cache.
 
-    mode "cached" never calls the AI; mode "live" calls it only on a cache miss
-    (or when force=True, which is the "Re-audit live" button).
+    mode "cached" (the default) returns a cached result when there is one and otherwise calls the
+    AI and caches it; mode "live", or force=True, always calls the AI. Lookup order on a cached
+    run: out/cache (exact: file hash + prompt/model scope), then data/audit_cache.json (file hash).
     """
     mode = mode or audit_mode()
     ctx = context_text() if ctx is None else ctx
     vm = load_vendor_master() if vm is None else vm
     history = load_history() if history is None else history
+    fh = file_hash(path)
 
-    if mode == "cached":
-        # No AI call allowed. Use any cache entry for this file, else the kill-test results.
-        for p in sorted(CACHE.glob(f"{file_hash(path)}-*.json")) if CACHE.exists() else []:
-            try:
-                audit = json.loads(p.read_text())
-            except json.JSONDecodeError:
-                continue
-            audit["_cache"] = {"hit": True, "key": p.stem, "mode": "cached"}
-            return audit
-        audit = legacy_cache(path.name)
-        if audit is None:
-            raise FileNotFoundError(f"AUDIT_MODE=cached but no cached audit for {path.name} "
-                                    f"(run with AUDIT_MODE=live once, or run scripts/audit_test.py)")
-        audit = dict(audit)
-        audit["_cache"] = {"hit": True, "key": "out/audit_results.json", "mode": "cached"}
-        return audit
+    if mode != "live" and not force:
+        for where, hit in (("out/cache", cache_read(scoped_key(fh, provider, ctx))),
+                           ("data/audit_cache.json", committed_read(fh))):
+            if hit is not None:
+                hit["_cache"] = {"hit": True, "source": where, "key": fh, "mode": mode}
+                return hit
 
     provider = provider or make_provider()
     key = cache_key(path, provider.name, provider.model, ctx)
-    cached = None if force else cache_read(key)
-    if cached is not None:
-        cached["_cache"] = {"hit": True, "key": key, "mode": "live"}
-        return cached
-
     audit = provider.generate([AUDIT_PROMPT, "CONTRACTOR TERMS:", TERMS, f"INVOICE FILE ({path.name}):", path, ctx],
                               InvoiceAudit)
+    audit["file"] = path.name
     if use_guardrails:
         audit = apply_guardrails(audit, guardrails(audit, vm, history))
     cache_write(key, audit)
-    audit["_cache"] = {"hit": False, "key": key, "mode": "live"}
+    audit["_cache"] = {"hit": False, "source": "ai", "key": key, "mode": mode}
     return audit
+
+
+def scoped_key(fh: str, provider: Optional[Provider], ctx: str) -> str:
+    """The out/cache key for a file hash. Without a provider we can still scope by the env model."""
+    name = provider.name if provider else os.environ.get("AI_PROVIDER", "openai")
+    model = provider.model if provider else os.environ.get("OPENAI_MODEL", "gpt-5-mini")
+    scope = hashlib.sha256("|".join([PROMPT_VERSION, name, model, AUDIT_PROMPT, ctx]).encode()).hexdigest()[:12]
+    return f"{fh}-{scope}"
 
 
 def appeals_dir_files() -> List[Path]:
@@ -416,43 +436,32 @@ def audit_appeal(audit: dict, appeal_text: str, provider: Optional[Provider] = N
                  vm: Optional[dict] = None, *, mode: Optional[str] = None, force: bool = False) -> dict:
     """Re-check a short-paid invoice against a contractor reply.
 
-    Cached like the audit itself, so the appeal beat in the video is instant and identical.
+    Cached like the audit itself (out/cache, then the committed data/audit_cache.json under
+    "appeal-<file>"), so the appeal beat in the video is instant and identical.
     """
     mode = mode or audit_mode()
     vm = load_vendor_master() if vm is None else vm
     withheld = withheld_amount(audit)
+    committed_key = f"appeal-{audit.get('file')}"
 
-    if mode == "cached":
-        for p in sorted(CACHE.glob("appeal-*.json")) if CACHE.exists() else []:
-            try:
-                res = json.loads(p.read_text())
-            except json.JSONDecodeError:
-                continue
-            if res.get("_for_file") == audit.get("file"):
-                out = dict(res)
-                out["_cache"] = {"hit": True, "key": p.stem, "mode": "cached"}
-                return out
-        res = legacy_cache(f"_appeal_{audit.get('file')}")
-        if res is None:
-            raise FileNotFoundError(f"AUDIT_MODE=cached but no cached appeal for {audit.get('file')} "
-                                    f"(run with AUDIT_MODE=live once, or run scripts/audit_test.py)")
-        out = dict(res)
-        out["_cache"] = {"hit": True, "key": "out/audit_results.json", "mode": "cached"}
-        return out
+    if mode != "live" and not force:
+        name = provider.name if provider else os.environ.get("AI_PROVIDER", "openai")
+        model = provider.model if provider else os.environ.get("OPENAI_MODEL", "gpt-5-mini")
+        for where, hit in (("out/cache", cache_read(appeal_cache_key(audit, appeal_text, name, model))),
+                           ("data/audit_cache.json", committed_read(committed_key))):
+            if hit is not None:
+                hit["_cache"] = {"hit": True, "source": where, "key": committed_key, "mode": mode}
+                return hit
 
     provider = provider or make_provider()
     key = appeal_cache_key(audit, appeal_text, provider.name, provider.model)
-    cached = None if force else cache_read(key)
-    if cached is not None:
-        cached["_cache"] = {"hit": True, "key": key, "mode": "live"}
-        return cached
-
     res = provider.generate([APPEAL_PROMPT, "CONTRACTOR TERMS:", TERMS,
                              f"ORIGINAL AUDIT:\n{json.dumps(audit, indent=2)}\nWITHHELD AMOUNT: {withheld}",
                              f"VENDOR MASTER:\n{json.dumps(vm, indent=2)}",
                              f"CONTRACTOR REPLY:\n{appeal_text}"], AppealResult)
     res["_for_file"] = audit.get("file")
     cache_write(key, res)
-    res["_cache"] = {"hit": False, "key": key, "mode": "live"}
+    res["_cache"] = {"hit": False, "source": "ai", "key": key, "mode": mode}
     return res
+
 

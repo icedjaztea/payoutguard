@@ -157,6 +157,8 @@ def summarize_batch(res: dict) -> dict:
 
 
 # ----------------------------------------------------------------------------- webhooks
+_registered_webhook_id: Optional[str] = None
+
 WEBHOOK_HEADERS = {
     "auth_algo": "paypal-auth-algo",
     "cert_url": "paypal-cert-url",
@@ -167,7 +169,8 @@ WEBHOOK_HEADERS = {
 
 
 def webhook_id() -> str:
-    return (os.environ.get("PAYPAL_WEBHOOK_ID") or "").strip()
+    """The configured webhook id, or the one registered at startup."""
+    return (os.environ.get("PAYPAL_WEBHOOK_ID") or _registered_webhook_id or "").strip()
 
 
 def verify_webhook_signature(headers, event: dict, token: Optional[str] = None) -> str:
@@ -189,3 +192,49 @@ def verify_webhook_signature(headers, event: dict, token: Optional[str] = None) 
     if st != 200:
         raise PayPalError(st, res, "verify webhook signature")
     return res.get("verification_status", "FAILURE")
+
+
+PAYOUT_EVENT_TYPES = [
+    "PAYMENT.PAYOUTSBATCH.SUCCESS",
+    "PAYMENT.PAYOUTSBATCH.DENIED",
+    "PAYMENT.PAYOUTSBATCH.PROCESSING",
+    "PAYMENT.PAYOUTS-ITEM.SUCCEEDED",
+    "PAYMENT.PAYOUTS-ITEM.FAILED",
+    "PAYMENT.PAYOUTS-ITEM.UNCLAIMED",
+    "PAYMENT.PAYOUTS-ITEM.RETURNED",
+    "PAYMENT.PAYOUTS-ITEM.BLOCKED",
+    "PAYMENT.PAYOUTS-ITEM.CANCELED",
+    "PAYMENT.PAYOUTS-ITEM.DENIED",
+    "PAYMENT.PAYOUTS-ITEM.HELD",
+    "PAYMENT.PAYOUTS-ITEM.REFUNDED",
+]
+
+def list_webhooks(token: Optional[str] = None) -> list:
+    st, res = call("GET", "/v1/notifications/webhooks", token=token or get_token())
+    if st != 200:
+        raise PayPalError(st, res, "list webhooks")
+    return res.get("webhooks") or []
+
+
+def create_webhook(url: str, event_types=None, token: Optional[str] = None) -> dict:
+    body = {"url": url, "event_types": [{"name": n} for n in (event_types or PAYOUT_EVENT_TYPES)]}
+    st, res = call("POST", "/v1/notifications/webhooks", token=token or get_token(), body=body)
+    if st not in (200, 201):
+        raise PayPalError(st, res, "create webhook")
+    return res
+
+
+def ensure_webhook(base_url: str, event_types=None) -> Optional[str]:
+    """Find-or-create the sandbox webhook for <base_url>/webhooks/paypal. Returns its id.
+
+    Raises PayPalError; the caller is expected to log it and fall back to polling.
+    """
+    global _registered_webhook_id
+    url = base_url.rstrip("/") + "/webhooks/paypal"
+    token = get_token()
+    for wh in list_webhooks(token):
+        if (wh.get("url") or "").rstrip("/") == url:
+            _registered_webhook_id = wh.get("id")
+            return _registered_webhook_id
+    _registered_webhook_id = (create_webhook(url, event_types, token) or {}).get("id")
+    return _registered_webhook_id

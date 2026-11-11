@@ -5,7 +5,11 @@ Env:  AUDIT_MODE=live|cached, AI_PROVIDER/OPENAI_*, PAYPAL_CLIENT_ID/SECRET
 Webhooks and appeals are deliberately not here yet.
 """
 import json
+import logging
 import os
+import threading
+import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -18,12 +22,38 @@ from app import paypal as PP
 from app import store
 
 A.load_env()
+log = logging.getLogger("payoutguard")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    register_webhook_on_startup()
+    yield
+
 
 app = FastAPI(title="PayoutGuard", version="0.1.0",
-              description="Audits contractor invoices before a PayPal Payouts batch leaves.")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+              description="Audits contractor invoices before a PayPal Payouts batch leaves.",
+              lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 SERVE_DIRS = [A.INBOX, A.DATA / "contracts", A.DATA / "appeals"]
+FINAL_BATCH_STATUS = ("SUCCESS", "DENIED", "CANCELED")
+POLL_SECONDS = 5
+POLL_MAX_TRIES = 60          # 5 minutes, then the UI can still poll with ?refresh=1
+_polling: set = set()
+_poll_lock = threading.Lock()
+
+
+def _provider_cache():
+    """One Provider per process, built on the first cache miss."""
+    if not hasattr(_provider_cache, "value"):
+        _provider_cache.value = A.make_provider()
+    return _provider_cache.value
 
 
 # ----------------------------------------------------------------------------- helpers
@@ -84,11 +114,71 @@ def payable_items(run: dict) -> list:
     return items
 
 
+def refresh_batch(run_id: str, payout_batch_id: str) -> Optional[str]:
+    """Re-read one batch from PayPal and write it back onto the run. Returns its status."""
+    run = store.load(run_id)
+    if run is None:
+        return None
+    try:
+        fresh = PP.summarize_batch(PP.get_payout(payout_batch_id))
+    except PP.PayPalError as e:
+        log.warning("poll %s: %s", payout_batch_id, e)
+        return None
+    for batch in store.batches(run):
+        if batch.get("payout_batch_id") == payout_batch_id:
+            batch["batch_status"] = fresh.get("batch_status") or batch.get("batch_status")
+            batch["amount"] = fresh.get("amount") or batch.get("amount")
+            batch["items"] = fresh.get("items") or batch.get("items")
+    store.save(recompute_totals(run))
+    return fresh.get("batch_status")
+
+
+def _poll_until_final(run_id: str, payout_batch_id: str) -> None:
+    try:
+        for _ in range(POLL_MAX_TRIES):
+            time.sleep(POLL_SECONDS)
+            if refresh_batch(run_id, payout_batch_id) in FINAL_BATCH_STATUS:
+                log.info("batch %s reached a final status", payout_batch_id)
+                return
+    finally:
+        with _poll_lock:
+            _polling.discard(payout_batch_id)
+
+
+def start_polling(run_id: str, payout_batch_id: str) -> bool:
+    """Poll GET /v1/payments/payouts/{id} every 5s in the background until the batch is final."""
+    if not payout_batch_id or os.environ.get("PAYOUTGUARD_DISABLE_POLLING") == "1":
+        return False
+    with _poll_lock:
+        if payout_batch_id in _polling:
+            return False
+        _polling.add(payout_batch_id)
+    threading.Thread(target=_poll_until_final, args=(run_id, payout_batch_id),
+                     name=f"poll-{payout_batch_id}", daemon=True).start()
+    return True
+
+
+def register_webhook_on_startup() -> Optional[str]:
+    """On a public host, find-or-create the sandbox webhook. Any failure falls back to polling."""
+    base = (os.environ.get("PUBLIC_BASE_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "").strip()
+    if not base:
+        log.info("no PUBLIC_BASE_URL / RENDER_EXTERNAL_URL: webhooks not registered, polling only")
+        return None
+    try:
+        wid = PP.ensure_webhook(base)
+        log.info("paypal webhook ready for %s/webhooks/paypal (id %s)", base.rstrip("/"), wid)
+        return wid
+    except Exception as e:  # noqa: BLE001 - never block startup on webhook setup
+        log.warning("could not register the paypal webhook (%s); relying on polling", e)
+        return None
+
+
 # ----------------------------------------------------------------------------- endpoints
 @app.get("/api/health")
 def health():
     return {"ok": True, "audit_mode": A.audit_mode(), "provider": os.environ.get("AI_PROVIDER", "openai"),
-            "active_run": store.active_run_id(), "paypal_base": PP.api_base()}
+            "active_run": store.active_run_id(), "paypal_base": PP.api_base(),
+            "webhook_id": PP.webhook_id() or None, "polling": sorted(_polling)}
 
 
 @app.post("/api/runs")
@@ -103,6 +193,18 @@ def create_run():
 @app.get("/api/runs")
 def list_runs():
     return {"active": store.active_run_id(), "runs": store.list_runs()}
+
+
+@app.get("/api/runs/current")
+def get_current_run():
+    """The active run, created on demand so the UI can open cold."""
+    run = store.active()
+    if run is None:
+        files = [p.name for p in A.inbox_files()]
+        if not files:
+            raise HTTPException(500, f"no invoice files in {A.INBOX}")
+        run = store.new_run(files, A.RUN_DATE, A.audit_mode())
+    return recompute_totals(run)
 
 
 @app.get("/api/runs/{run_id}")
@@ -143,7 +245,7 @@ def audit_run(run_id: str,
     provider = None
     if mode == "live":
         try:
-            provider = A.make_provider()
+            provider = _provider_cache()
         except Exception as e:  # noqa: BLE001 - missing key / bad provider name
             raise HTTPException(500, f"AI provider unavailable: {e}")
 
@@ -204,6 +306,7 @@ def approve_run(run_id: str,
     run["status"] = "approved"
     run["approved_at"] = store.now()
     store.save(recompute_totals(run))
+    start_polling(run["run_id"], batch.get("payout_batch_id"))
     return run
 
 
@@ -322,6 +425,8 @@ def run_appeal(run_id: str, file: str,
         batch["items_sent"] = [item]
         appeal["batch"] = batch
 
+    if appeal.get("batch"):
+        start_polling(run["run_id"], appeal["batch"].get("payout_batch_id"))
     run.setdefault("appeals", {})[file] = appeal
     inv["appeal"] = {k: appeal[k] for k in ("decision", "top_up_amount", "clause", "reasoning", "evidence")}
     if appeal["decision"] == "TOP_UP" and appeal["batch"]:
@@ -416,10 +521,22 @@ async def paypal_webhook(request: Request):
 
 
 # Serve the built frontend if it exists (web/dist), so one process serves everything.
-_dist = A.ROOT / "web" / "dist"
-if _dist.is_dir():
+# Unknown paths fall back to index.html (SPA routing); /api and /files are already matched above.
+DIST = A.ROOT / "web" / "dist"
+if DIST.is_dir():
     from fastapi.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory=str(_dist), html=True), name="web")
+
+    if (DIST / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=str(DIST / "assets")), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str):
+        candidate = (DIST / full_path).resolve()
+        if full_path and candidate.is_file() and candidate.is_relative_to(DIST.resolve()):
+            return FileResponse(candidate)
+        return FileResponse(DIST / "index.html")
+else:
+    log.info("web/dist not built yet: serving the API only")
 
 
 @app.exception_handler(ValueError)

@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: payoutguard
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # Secrets: set these in the Render dashboard, never in the repo.
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      # Reuse the committed audit cache so the hosted demo is fast and identical.
+      - key: AUDIT_MODE
+        value: cached
+      - key: AI_PROVIDER
+        value: openai
+      # Used at startup to find-or-create the sandbox webhook for <url>/webhooks/paypal.
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          name: payoutguard
+          envVarKey: RENDER_EXTERNAL_URL

@@ -1,0 +1,411 @@
+{
+  "09f6c72c4609d6817843a8af5ceaa08131f46c697ab0940be1e3383ac7ccb391": {
+    "approved_amount": 0.0,
+    "billed_total": 1440.0,
+    "confidence": 1.0,
+    "contractor_id": "C002",
+    "contractor_name": "Diego Ramos",
+    "decision": "HOLD_DUPLICATE",
+    "file": "Document (3).pdf",
+    "findings": [
+      {
+        "clause": "3",
+        "code": "DUPLICATE",
+        "evidence": "Invoice: \"Invoice # INV-0117 | 3 Nov 2026\"; \"October 2026\"; \"Blog series - October (4 posts)\"; \"TOTAL DUE (USD) $1,440.00\"; \"Resending in case this one got lost - thanks!\" History: \"2026-10-30,C002,Diego Ramos,INV-117,Blog series - October (4 posts),1440.00,diego.ramos.brightloom@personal.example.com,SUCCESS\". Clause 3: \"An invoice for work already paid (same work, same period, same amount) will not be paid again, even if re-numbered or re-dated.\"",
+        "explanation": "The same October blog series, quantity and amount were successfully paid on 2026-10-30. The added zero in the invoice number and new invoice date do not permit another payment. The rate and arithmetic are correct: 4 posts \u00d7 $360 = $1,440. The invoice PayPal email matches the vendor master; the inbox payee-change email concerns a different contractor."
+      }
+    ],
+    "guardrail_flags": [
+      "Same amount and work already paid 2026-10-30 as INV-117 (Blog series - October (4 posts))"
+    ],
+    "invoice_date": "2026-11-03",
+    "invoice_number": "INV-0117",
+    "line_items": [
+      {
+        "amount": 1440.0,
+        "approved": false,
+        "description": "Blog series - October (4 posts)",
+        "quantity": 4.0,
+        "unit_price": 360.0,
+        "withhold_reason": "Already paid on 2026-10-30 under INV-117 for the same October blog series and amount; clause 3 prohibits repeat payment despite renumbering or redating."
+      }
+    ],
+    "payee_email_on_invoice": "diego.ramos.brightloom@personal.example.com",
+    "remittance_note": "Hi Diego, no additional payment will be issued for INV-0117. The October blog series (4 posts), totaling $1,440, was successfully paid on 30 October under INV-117. Clause 3 prevents paying the same work again, even if renumbered or redated. Please contact AP if this invoice covers different work."
+  },
+  "1145248fb70723c05a25ef3b5a0bb12f6097749200cb24200d4be89552430c06": {
+    "approved_amount": 1210.0,
+    "billed_total": 1210.0,
+    "confidence": 0.99,
+    "contractor_id": "C006",
+    "contractor_name": "Sam Whitfield",
+    "decision": "PAY",
+    "file": "IMG_1301.jpg",
+    "findings": [
+      {
+        "clause": "1, 4.1",
+        "code": "RATE_AND_CAP_VERIFIED",
+        "evidence": "Invoice: \"Regression testing - checkout\", \"22 h\", \"$55.00\", \"$1,210.00\". Schedule A: \"C006 Sam Whitfield QA tester $55 / hour 40 h\".",
+        "explanation": "The invoiced hourly rate matches Schedule A, and 22 hours is within the 40-hour weekly cap."
+      },
+      {
+        "clause": "2",
+        "code": "MATH_VERIFIED",
+        "evidence": "Invoice: \"22 h\", \"$55.00\", \"TOTAL DUE (USD) $1,210.00\".",
+        "explanation": "22 \u00d7 $55 = $1,210; the line amount and invoice total are correct."
+      },
+      {
+        "clause": "5",
+        "code": "PAYEE_VERIFIED",
+        "evidence": "Invoice: \"PayPal: sam.whitfield.brightloom@personal.example.com\". Vendor C006 paypal_email: \"sam.whitfield.brightloom@personal.example.com\".",
+        "explanation": "The invoice PayPal email matches the vendor master. The inbox change request concerns Tom Okafor, not Sam Whitfield."
+      },
+      {
+        "clause": "3",
+        "code": "DUPLICATE_CHECK_CLEAR",
+        "evidence": "Invoice: \"No. SW-77\", \"Service period 2 Nov - 6 Nov 2026\". History: \"2026-10-16,C006,Sam Whitfield,SW-298,22 x hour,1210.00\"; the latest supplied C006 payout is dated \"2026-10-30\".",
+        "explanation": "No matching payment for this work and period appears in the supplied history. The earlier $1,210 payment alone does not establish a duplicate."
+      }
+    ],
+    "guardrail_flags": [],
+    "invoice_date": "2026-11-06",
+    "invoice_number": "SW-77",
+    "line_items": [
+      {
+        "amount": 1210.0,
+        "approved": true,
+        "description": "Regression testing - checkout (2 Nov - 6 Nov 2026)",
+        "quantity": 22.0,
+        "unit_price": 55.0,
+        "withhold_reason": null
+      }
+    ],
+    "payee_email_on_invoice": "sam.whitfield.brightloom@personal.example.com",
+    "remittance_note": "Hi Sam, approved $1,210 in full for 22 hours of checkout regression testing, 2\u20136 November. Your $55 hourly rate matches Schedule A under clause 1, and the hours are within the weekly cap under clause 4.1. Nothing is withheld."
+  },
+  "3836bd056e9e8d32676be66087eda7149d5ec210e2ca8c9ca68231b6111ab43c": {
+    "approved_amount": 1050.0,
+    "billed_total": 1050.0,
+    "confidence": 1.0,
+    "contractor_id": "C008",
+    "contractor_name": "Aiko Tanaka",
+    "decision": "PAY",
+    "file": "20261105_invoice.pdf",
+    "findings": [
+      {
+        "clause": "1",
+        "code": "RATE_AND_TOTAL_VERIFIED",
+        "evidence": "Invoice: \"Translation JA>EN - help centre articles\"; \"7,500 words\"; \"$0.14\"; \"$1,050.00\". Schedule A: \"C008 Aiko Tanaka Translator (JA-EN) $0.14 / word \u2014\".",
+        "explanation": "The translation rate matches Schedule A. 7,500 words \u00d7 $0.14 = $1,050, matching the invoice total. No weekly cap applies to this contractor."
+      },
+      {
+        "clause": "5",
+        "code": "PAYEE_VERIFIED",
+        "evidence": "Invoice: \"PayPal: aiko.tanaka.brightloom@personal.example.com\". Vendor C008: \"paypal_email\": \"aiko.tanaka.brightloom@personal.example.com\". Inbox request: \"From: Tom Okafor <tom@okafor-edits.co>\".",
+        "explanation": "The invoice PayPal address matches the vendor master. The inbox payee-change request concerns Tom Okafor, not Aiko Tanaka."
+      }
+    ],
+    "guardrail_flags": [],
+    "invoice_date": "2026-11-05",
+    "invoice_number": "AT-118",
+    "line_items": [
+      {
+        "amount": 1050.0,
+        "approved": true,
+        "description": "Translation JA>EN - help centre articles",
+        "quantity": 7500.0,
+        "unit_price": 0.14,
+        "withhold_reason": null
+      }
+    ],
+    "payee_email_on_invoice": "aiko.tanaka.brightloom@personal.example.com",
+    "remittance_note": "Thank you, Aiko. Invoice AT-118 is approved in full for $1,050: 7,500 words at the Schedule A rate of $0.14 per word under clause 1. Payment will go to your PayPal address on file. Nothing is withheld."
+  },
+  "53c6dc7f13584cde6ae74f0e0c1275e7df0d2837719662a180ade617668be5f3": {
+    "approved_amount": 3400.0,
+    "billed_total": 3400.0,
+    "confidence": 0.99,
+    "contractor_id": "C001",
+    "contractor_name": "Maya Chen",
+    "decision": "PAY",
+    "file": "scan_0043.pdf",
+    "findings": [
+      {
+        "clause": "1",
+        "code": "RATE_AND_CAP_VERIFIED",
+        "evidence": "Invoice: \"UI design - onboarding flow v2\"; \"40 h\"; \"$85.00\"; \"$3,400.00\". Schedule A: \"C001 Maya Chen UI designer $85 / hour 45 h\".",
+        "explanation": "The invoiced rate matches Schedule A. The 40 hours are within the 45-hour weekly cap under clause 4.1; no additional approval is required."
+      },
+      {
+        "clause": null,
+        "code": "MATH_VERIFIED",
+        "evidence": "Invoice: \"40 h\"; \"$85.00\"; \"$3,400.00\"; \"TOTAL DUE (USD) $3,400.00\".",
+        "explanation": "40 \u00d7 $85 = $3,400, matching the line amount and invoice total."
+      },
+      {
+        "clause": "5",
+        "code": "PAYEE_VERIFIED",
+        "evidence": "Invoice: \"PayPal: maya.chen.brightloom@personal.example.com\". Vendor C001: \"paypal_email\": \"maya.chen.brightloom@personal.example.com\". Inbox: \"From: Tom Okafor <tom@okafor-edits.co>\".",
+        "explanation": "The invoice PayPal email matches the vendor master. The inbox change request concerns Tom Okafor, not Maya Chen."
+      },
+      {
+        "clause": "3",
+        "code": "NO_DUPLICATE_IDENTIFIED",
+        "evidence": "Invoice: \"Invoice # MC-0311\"; \"2 Nov - 6 Nov 2026\". Latest C001 history entry: \"2026-10-30,C001,Maya Chen,MC-299,35 x hour,2975.00\".",
+        "explanation": "No payment for MC-0311 or the current service period is shown. Earlier $3,400 payments alone do not establish the same work and period."
+      }
+    ],
+    "guardrail_flags": [],
+    "invoice_date": "2026-11-06",
+    "invoice_number": "MC-0311",
+    "line_items": [
+      {
+        "amount": 3400.0,
+        "approved": true,
+        "description": "UI design - onboarding flow v2",
+        "quantity": 40.0,
+        "unit_price": 85.0,
+        "withhold_reason": null
+      }
+    ],
+    "payee_email_on_invoice": "maya.chen.brightloom@personal.example.com",
+    "remittance_note": "Hi Maya, your invoice MC-0311 is approved in full for $3,400: 40 hours at the Schedule A rate of $85/hour, within the weekly cap under clauses 1 and 4.1. Payment will use your PayPal email on file. Nothing is withheld."
+  },
+  "54440506fbe0c82443546d5e541f0d52f2852561a2b784f97d59a9462568e384": {
+    "approved_amount": 0.0,
+    "billed_total": 9400.0,
+    "confidence": 1.0,
+    "contractor_id": "C004",
+    "contractor_name": "Tom Okafor",
+    "decision": "QUARANTINE_PAYEE",
+    "file": "invoice.pdf",
+    "findings": [
+      {
+        "clause": "5",
+        "code": "PAYEE_CHANGE",
+        "evidence": "Invoice: \"PayPal: tom.okafor.payments@okafor-edits.co\" and \"Urgent: needed before the weekend.\" Vendor master: \"paypal_email\": \"tom.okafor.brightloom@personal.example.com\", \"contact_email\": \"tom@okaforedits.com\", \"payee_change_requests_on_file\": []. Email from \"Tom Okafor <tom@okafor-edits.co>\": \"I'm travelling and can't take calls, so email is best.\"",
+        "explanation": "Both the invoice and inbox email request payment to an address different from the vendor master. No payee change request is on file. The email uses a look-alike domain, requests urgent payment and discourages phone verification. Quarantine the entire payment pending the required portal request and callback verification; the first payment to verified new details must also satisfy the five-business-day hold."
+      },
+      {
+        "clause": "1",
+        "code": "UNSUPPORTED_CHARGE",
+        "evidence": "Invoice: \"Raw footage archive export\" \u2014 quantity 1, rate \"$1,000.00\", amount \"$1,000.00\". Schedule A: \"C004 Tom Okafor Video editor $1,200 / edited video \u2014\". Clause 1: \"Rates may only change by signed amendment.\"",
+        "explanation": "The separate $1,000 archive-export charge has no contracted rate in Schedule A, and no signed amendment is supplied. It remains unsupported independently of the payee hold."
+      },
+      {
+        "clause": null,
+        "code": "AMOUNT_ANOMALY",
+        "evidence": "Invoice: \"7 videos\" at \"$1,200.00\" = \"$8,400.00\", plus \"$1,000.00\", \"TOTAL DUE (USD) $9,400.00\". Tom's historical payments: $2,400, $3,600, $1,200, $2,400, $2,400, $3,600 and $2,400.",
+        "explanation": "The $9,400 invoice is substantially above Tom's prior weekly payments of $1,200\u2013$3,600, reinforcing the need to verify the changed payee. This is not an independent reason to reject the seven videos: their contracted rate is correct, no weekly cap applies, and the invoice arithmetic reconciles to $9,400."
+      }
+    ],
+    "guardrail_flags": [
+      "Payee tom.okafor.payments@okafor-edits.co != on file tom.okafor.brightloom@personal.example.com"
+    ],
+    "invoice_date": "2026-11-05",
+    "invoice_number": "TO-1188",
+    "line_items": [
+      {
+        "amount": 8400.0,
+        "approved": false,
+        "description": "Edited video - product launch series",
+        "quantity": 7.0,
+        "unit_price": 1200.0,
+        "withhold_reason": "The rate and arithmetic are supported by Schedule A, with no weekly cap applicable. Payment is nevertheless held under clause 5 because the requested PayPal address differs from the verified address on file."
+      },
+      {
+        "amount": 1000.0,
+        "approved": false,
+        "description": "Raw footage archive export",
+        "quantity": 1.0,
+        "unit_price": 1000.0,
+        "withhold_reason": "No Schedule A rate or signed amendment supports this separate charge under clause 1. Also subject to the invoice-wide payee quarantine under clause 5."
+      }
+    ],
+    "payee_email_on_invoice": "tom.okafor.payments@okafor-edits.co",
+    "remittance_note": "Hi Tom, payment is on hold because the requested PayPal address differs from our records (clause 5). Please request changes through the portal; callback verification and a five-business-day hold apply. The $8,400 video charge matches Schedule A. The $1,000 archive export lacks a contracted rate or signed amendment (clauses 1 and 6)."
+  },
+  "appeal-scan_0042.pdf": {
+    "_for_file": "scan_0042.pdf",
+    "clause": "4.3; 6",
+    "decision": "TOP_UP",
+    "evidence": "Vendor master identifies Daniel Koh, daniel.koh@brightloom.studio, as Engagement PM. His forwarded email from that address, dated 30 October 2026 at 18:20:11 +0800, states: \"Confirming the weekend release support on Sat 7 Nov is approved under clause 4.3\" and \"plus a flat rush surcharge of USD 650.\"",
+    "reasoning": "All four approval conditions are met: the approval comes from Daniel Koh, the Engagement PM on file; it is in writing; it is dated 30 October 2026, before the work on 7 November 2026; and it expressly approves a flat USD 650 rush surcharge. The top-up is the lesser of the USD 650 withheld and the USD 650 approved.",
+    "remittance_note": "Hi Priya, the written approval from Daniel Koh satisfies clause 4.3. We have approved the withheld USD 650 rush surcharge on invoice PN-2026-044 for payment under clause 6 to your verified PayPal account.",
+    "top_up_amount": 650.0
+  },
+  "b5ef89935a5da587490825bfeb84ec0db18563aad6de158abd070319c3c74220": {
+    "approved_amount": 1350.0,
+    "billed_total": 1350.0,
+    "confidence": 0.99,
+    "contractor_id": "C005",
+    "contractor_name": "Lena Fischer",
+    "decision": "PAY",
+    "file": "IMG_1234.jpg",
+    "findings": [
+      {
+        "clause": "1",
+        "code": "RATE_AND_MATH_VERIFIED",
+        "evidence": "Invoice: \"Editorial illustration - blog headers\", \"3 illus.\", \"$450.00\", \"TOTAL DUE (USD) $1,350.00\". Schedule A: \"C005 Lena Fischer Illustrator $450 / illustration \u2014\".",
+        "explanation": "The illustration rate matches Schedule A. Three illustrations at $450 total $1,350, matching the invoice total. No weekly cap applies to this contractor."
+      },
+      {
+        "clause": "5",
+        "code": "PAYEE_VERIFIED",
+        "evidence": "Invoice: \"PayPal: lena.fischer.brightloom@personal.example.com\". Vendor master C005: \"paypal_email\": \"lena.fischer.brightloom@personal.example.com\".",
+        "explanation": "The invoice PayPal email exactly matches the vendor master. The inbox payee-change request concerns Tom Okafor, not Lena Fischer."
+      },
+      {
+        "clause": "3",
+        "code": "DUPLICATE_CHECK_CLEAR",
+        "evidence": "Invoice: \"Invoice # LF-0092\", \"Service period 2 Nov - 6 Nov 2026\", \"$1,350.00\". Latest C005 payout: \"2026-10-30,C005,Lena Fischer,LF-303,4 x illustration,1800.00\".",
+        "explanation": "No matching invoice or payment for the stated work period and amount appears in the supplied payout history."
+      }
+    ],
+    "guardrail_flags": [],
+    "invoice_date": "2026-11-06",
+    "invoice_number": "LF-0092",
+    "line_items": [
+      {
+        "amount": 1350.0,
+        "approved": true,
+        "description": "Editorial illustration - blog headers",
+        "quantity": 3.0,
+        "unit_price": 450.0,
+        "withhold_reason": null
+      }
+    ],
+    "payee_email_on_invoice": "lena.fischer.brightloom@personal.example.com",
+    "remittance_note": "Hi Lena, your invoice LF-0092 is approved in full for $1,350 for three illustrations at the Schedule A rate under clause 1. Nothing is withheld. Payment will use your PayPal email on file, consistent with clause 5."
+  },
+  "eec52e54d55630f725de2a1fc2689e0e510d6c72a3010b414d70471f9fc98461": {
+    "approved_amount": 4200.0,
+    "billed_total": 4850.0,
+    "confidence": 0.96,
+    "contractor_id": "C003",
+    "contractor_name": "Priya Nair",
+    "decision": "SHORT_PAY",
+    "file": "scan_0042.pdf",
+    "findings": [
+      {
+        "clause": "4.1",
+        "code": "RATE_AND_CAP_SUPPORTED",
+        "evidence": "Schedule A: \"C003 Priya Nair Frontend developer $84 / hour 50 h\". Invoice: \"Frontend development - Sprint 14 45 h $84.00 $3,780.00\" and \"Weekend release support (Sat 7 Nov) 5h $84.00 $420.00\".",
+        "explanation": "Both hourly lines use the Schedule A rate of $84. Together they total 50 hours, exactly the weekly cap. Weekend hours billed at the ordinary rate are not themselves a surcharge and do not require surcharge approval."
+      },
+      {
+        "clause": "4.3",
+        "code": "UNAPPROVED_SURCHARGE",
+        "evidence": "Invoice: \"Rush surcharge - weekend release 1 $650.00 $650.00\" and \"Weekend release support as discussed with Daniel.\" Clause 4.3: \"payable only if pre-approved in writing by the Engagement PM before the work is performed, and the approval states the amount or cap.\"",
+        "explanation": "Withhold the $650 rush surcharge. The invoice's reference to a discussion is not written PM pre-approval stating an amount or cap. No qualifying approval appears in the supplied documents."
+      },
+      {
+        "clause": "2",
+        "code": "SERVICE_DATE_DISCREPANCY",
+        "evidence": "Invoice date: \"6 Nov 2026\"; service period: \"2 Nov - 6 Nov 2026\"; line description: \"Weekend release support (Sat 7 Nov)\".",
+        "explanation": "The weekend support is dated one day after both the payout run and the stated service period. This discrepancy is noted, but the supplied terms do not prohibit advance billing; it does not independently justify withholding the ordinary-rate hours."
+      },
+      {
+        "clause": null,
+        "code": "ARITHMETIC_VERIFIED",
+        "evidence": "Invoice amounts: \"$3,780.00\", \"$420.00\", \"$650.00\"; \"TOTAL DUE (USD) $4,850.00\".",
+        "explanation": "All line calculations and the billed total are correct: 45 \u00d7 $84 = $3,780; 5 \u00d7 $84 = $420; $3,780 + $420 + $650 = $4,850. Approved hourly lines total $4,200."
+      },
+      {
+        "clause": "5",
+        "code": "PAYEE_VERIFIED",
+        "evidence": "Invoice: \"PayPal: priya.nair.brightloom@personal.example.com\". Vendor master C003: \"paypal_email\": \"priya.nair.brightloom@personal.example.com\". Inbox email: \"From: Tom Okafor <tom@okafor-edits.co>\".",
+        "explanation": "The invoice payee matches Priya's vendor-master record. The inbox payee-change email concerns Tom Okafor, not Priya."
+      }
+    ],
+    "guardrail_flags": [],
+    "invoice_date": "2026-11-06",
+    "invoice_number": "PN-2026-044",
+    "line_items": [
+      {
+        "amount": 3780.0,
+        "approved": true,
+        "description": "Frontend development - Sprint 14",
+        "quantity": 45.0,
+        "unit_price": 84.0,
+        "withhold_reason": null
+      },
+      {
+        "amount": 420.0,
+        "approved": true,
+        "description": "Weekend release support (Sat 7 Nov)",
+        "quantity": 5.0,
+        "unit_price": 84.0,
+        "withhold_reason": null
+      },
+      {
+        "amount": 650.0,
+        "approved": false,
+        "description": "Rush surcharge - weekend release",
+        "quantity": 1.0,
+        "unit_price": 650.0,
+        "withhold_reason": "Clause 4.3 requires advance written Engagement PM approval stating the surcharge amount or cap. No such approval was supplied; clause 6 permits withholding this disputed portion."
+      }
+    ],
+    "payee_email_on_invoice": "priya.nair.brightloom@personal.example.com",
+    "remittance_note": "Hi Priya, we're paying $4,200 for 50 hours at the Schedule A rate, within clause 4.1's cap. Under clauses 4.3 and 6, we're withholding the $650 rush surcharge because written PM pre-approval stating its amount or cap wasn't supplied. Please provide qualifying approval within 10 business days for review."
+  },
+  "ef0c849baf5a070709f586aca4955e34f504bc8cdf8e2263593bbec36dae1ed2": {
+    "approved_amount": 2880.0,
+    "billed_total": 2880.0,
+    "confidence": 1.0,
+    "contractor_id": "C007",
+    "contractor_name": "Kofi Mensah",
+    "decision": "PAY",
+    "file": "final_FINAL_v2.pdf",
+    "findings": [
+      {
+        "clause": "1",
+        "code": "RATE_VERIFIED",
+        "evidence": "Schedule A: 'C007 Kofi Mensah Motion designer $80 / hour 45 h'. Invoice: 'Motion design - launch teaser 30 h $80.00 $2,400.00' and 'Motion design - social cutdowns 6 h $80.00 $480.00'.",
+        "explanation": "Both lines use Kofi Mensah's Schedule A rate of $80 per hour."
+      },
+      {
+        "clause": "4.1",
+        "code": "CAP_AND_MATH_VERIFIED",
+        "evidence": "Service period: '2 Nov - 6 Nov 2026'; quantities: '30 h' and '6 h'; Schedule A weekly cap: '45 h'; invoice: 'TOTAL DUE (USD) $2,880.00'.",
+        "explanation": "Total hours are 36, below the 45-hour weekly cap. Both line calculations and the invoice total are correct: 30 \u00d7 $80 + 6 \u00d7 $80 = $2,880."
+      },
+      {
+        "clause": "5",
+        "code": "PAYEE_VERIFIED",
+        "evidence": "Invoice: 'PayPal: kofi.mensah.brightloom@personal.example.com'. Vendor C007: 'paypal_email': 'kofi.mensah.brightloom@personal.example.com'. Inbox email: 'From: Tom Okafor <tom@okafor-edits.co>'.",
+        "explanation": "The invoice PayPal address exactly matches the vendor master. The inbox change request concerns Tom Okafor, not Kofi Mensah."
+      },
+      {
+        "clause": "3",
+        "code": "DUPLICATE_CHECK",
+        "evidence": "Invoice: 'invoice KM-2026-19', service period '2 Nov - 6 Nov 2026'. History: '2026-10-02,C007,Kofi Mensah,KM-293,36 x hour,2880.00'; latest C007 payment: '2026-10-30,C007,Kofi Mensah,KM-305,31 x hour,2480.00'.",
+        "explanation": "No supplied history entry establishes prior payment for this work and period. The earlier $2,880 payment alone does not establish a duplicate."
+      }
+    ],
+    "guardrail_flags": [],
+    "invoice_date": "2026-11-06",
+    "invoice_number": "KM-2026-19",
+    "line_items": [
+      {
+        "amount": 2400.0,
+        "approved": true,
+        "description": "Motion design - launch teaser",
+        "quantity": 30.0,
+        "unit_price": 80.0,
+        "withhold_reason": null
+      },
+      {
+        "amount": 480.0,
+        "approved": true,
+        "description": "Motion design - social cutdowns",
+        "quantity": 6.0,
+        "unit_price": 80.0,
+        "withhold_reason": null
+      }
+    ],
+    "payee_email_on_invoice": "kofi.mensah.brightloom@personal.example.com",
+    "remittance_note": "Hi Kofi, approved in full for $2,880: 36 hours at the Schedule A rate of $80/hour, within the 45-hour weekly cap (clauses 1 and 4.1). Nothing is withheld. Payment will use your PayPal address on file."
+  }
+}

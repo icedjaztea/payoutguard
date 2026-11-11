@@ -51,9 +51,30 @@ uvicorn app.main:app --reload --port 8000
 `scripts/audit_test.py`); `app/paypal.py` holds the token / create-batch / get-batch calls (shared with
 `scripts/payouts_test.py`); `app/store.py` keeps run state as JSON in `runs/`.
 
-`AUDIT_MODE=live` calls the AI on a cache miss and writes the result to `out/cache/<file-hash>-<prompt-scope>.json`.
-`AUDIT_MODE=cached` never calls the AI: it reuses `out/cache`, falling back to `out/audit_results.json` from the
-kill test. `POST /api/runs/{id}/audit?force=true` is the "Re-audit live" button.
+`AUDIT_MODE=cached` (the default) serves a cached verdict when there is one and otherwise calls the AI and caches
+it; `AUDIT_MODE=live` always calls the AI. Lookup order: `out/cache/<file-hash>-<prompt-scope>.json`, then the
+committed `data/audit_cache.json` (keyed by file hash), then the AI. `POST /api/runs/{id}/audit?force=true` is the
+"Re-audit live" button.
+
+`data/audit_cache.json` is committed so a fresh deploy answers instantly with the verdicts we tested. Re-seed it
+after changing a prompt or model — it only writes when all 8 invoices match `data/expected_labels.json` and the
+appeal returns TOP_UP 650:
+
+```bash
+python tools/seed_cache.py            # one live run, then write the committed cache
+python tools/seed_cache.py --dry-run  # score only
+```
+
+`GET /api/runs/current` returns the active run, creating one from `data/inbox` if there is none, and `web/dist` is
+served at `/` with an SPA fallback when it has been built (`cd web && npm run build`). CORS is open to
+`localhost:5173` for `npm run dev`.
+
+### Deploy
+
+`render.yaml` describes one free Docker web service with health check `/api/health`, `AUDIT_MODE=cached`, and
+`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `OPENAI_API_KEY`, `OPENAI_MODEL` left as dashboard secrets
+(`sync: false`). The `Dockerfile` builds `web/` in a Node stage when it is present, then runs
+`uvicorn app.main:app` on `$PORT`.
 
 ### Local flow
 
@@ -84,7 +105,11 @@ item/batch status for the main batch and any top-up batch. Register the URL at D
 app > Features > Sandbox Webhooks and put the webhook id in `PAYPAL_WEBHOOK_ID`: every event is then verified with
 `/v1/notifications/verify-webhook-signature` and a failure changes nothing. Without that id an event cannot be
 verified and is refused with 400 unless `PAYPAL_ALLOW_UNVERIFIED_WEBHOOKS=1` is set for local testing.
-`GET /api/runs/{id}?refresh=1` is the poll fallback.
+After any batch is created the server also polls `GET /v1/payments/payouts/{id}` every 5 s in a background thread
+until the batch is final, so item statuses tick over even with no webhook registered; `GET /api/runs/{id}?refresh=1`
+forces a re-read, and `GET /api/health` lists the batches currently being polled. On startup, if `PUBLIC_BASE_URL`
+or `RENDER_EXTERNAL_URL` is set, the server finds-or-creates the sandbox webhook for `<url>/webhooks/paypal` over
+the PayPal API and keeps its id in memory; any failure there is logged and polling carries the demo.
 
 ### Tests
 

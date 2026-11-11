@@ -205,5 +205,16 @@ def test_files_serves_inbox_documents(client, runs):
 
 
 def test_files_rejects_traversal_and_unknown(client, runs):
-    assert client.get("/files/..%2F.env").status_code in (400, 404)
+    import pytest as _pytest
+    from fastapi import HTTPException
+
+    from app.main import get_file
+
     assert client.get("/files/nope.pdf").status_code == 404
+    for bad in ("../.env", "..\\.env", ".env", "sub/dir.pdf"):
+        with _pytest.raises(HTTPException):
+            get_file(bad)
+    # and nothing that does come back is ever the project .env
+    for path in ("/files/..%2F.env", "/files/.env", "/.env"):
+        r = client.get(path)
+        assert "PAYPAL_CLIENT_SECRET" not in r.text

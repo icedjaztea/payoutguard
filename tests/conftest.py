@@ -21,6 +21,9 @@ def no_network(monkeypatch):
     monkeypatch.delenv("PAYPAL_WEBHOOK_ID", raising=False)
     monkeypatch.delenv("PAYPAL_ALLOW_UNVERIFIED_WEBHOOKS", raising=False)
     PP._token_cache.update(token=None, expires_at=0.0)
+    # ensure_webhook() sets a module global; clear it so one test cannot leak into the next
+    PP._registered_webhook_id = None
+    monkeypatch.setenv("PAYOUTGUARD_DISABLE_POLLING", "1")
 
 
 @pytest.fixture

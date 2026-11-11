@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+runs/
+out/
+web/node_modules
+web/dist
+__pycache__/
+*.pyc
+tests/
