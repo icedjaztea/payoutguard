@@ -1,0 +1,124 @@
+"""Run state as one JSON file per run in runs/. One active run at a time.
+
+runs/{run_id}.json   full state
+runs/active.json     {"run_id": ...} pointer to the current run
+"""
+import json
+import os
+import tempfile
+import threading
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+ROOT = Path(__file__).resolve().parent.parent
+RUNS = Path(os.environ.get("PAYOUTGUARD_RUNS_DIR") or (ROOT / "runs"))
+ACTIVE = "active.json"
+
+_lock = threading.Lock()
+
+
+def runs_dir() -> Path:
+    # Re-read the env var each call so tests can point it at a temp dir.
+    d = Path(os.environ.get("PAYOUTGUARD_RUNS_DIR") or (ROOT / "runs"))
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _path(run_id: str) -> Path:
+    if not run_id or "/" in run_id or "\\" in run_id or run_id.startswith("."):
+        raise ValueError(f"bad run_id {run_id!r}")
+    return runs_dir() / f"{run_id}.json"
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            json.dump(payload, fh, indent=2)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def new_run(files: list, run_date: str, audit_mode: str) -> dict:
+    run_id = f"run-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+    run = {
+        "run_id": run_id,
+        "created_at": now(),
+        "updated_at": now(),
+        "status": "created",          # created -> audited -> approved
+        "run_date": run_date,
+        "audit_mode": audit_mode,
+        "files": files,
+        "invoices": {name: {"file": name, "status": "pending"} for name in files},
+        "totals": {"billed": 0.0, "paying": 0.0, "stopped": 0.0},
+        "batch": None,
+        "appeals": {},
+        "errors": [],
+    }
+    with _lock:
+        _write_json(_path(run_id), run)
+        _write_json(runs_dir() / ACTIVE, {"run_id": run_id, "created_at": run["created_at"]})
+    return run
+
+
+def save(run: dict) -> dict:
+    run["updated_at"] = now()
+    with _lock:
+        _write_json(_path(run["run_id"]), run)
+    return run
+
+
+def load(run_id: str) -> Optional[dict]:
+    if run_id in ("active", "current"):
+        run_id = active_run_id() or ""
+        if not run_id:
+            return None
+    try:
+        p = _path(run_id)
+    except ValueError:
+        return None
+    if not p.exists():
+        return None
+    return json.loads(p.read_text())
+
+
+def active_run_id() -> Optional[str]:
+    p = runs_dir() / ACTIVE
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text()).get("run_id")
+    except json.JSONDecodeError:
+        return None
+
+
+def active() -> Optional[dict]:
+    rid = active_run_id()
+    return load(rid) if rid else None
+
+
+def list_runs() -> list:
+    out = []
+    for p in sorted(runs_dir().glob("run-*.json")):
+        try:
+            r = json.loads(p.read_text())
+        except json.JSONDecodeError:
+            continue
+        out.append({k: r.get(k) for k in ("run_id", "created_at", "status", "totals")})
+    return out
+
+
+def clear_active() -> None:
+    p = runs_dir() / ACTIVE
+    with _lock:
+        if p.exists():
+            p.unlink()

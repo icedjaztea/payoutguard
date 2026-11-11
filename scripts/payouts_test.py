@@ -10,78 +10,41 @@ Needs in .env (or the environment):
 
 PASS = batch reaches SUCCESS (or PROCESSING then SUCCESS) and items are SUCCESS or UNCLAIMED.
 UNCLAIMED just means the email has no sandbox account yet — the API works; create the account to see money land.
-Stdlib only, no installs needed.
+
+The PayPal calls live in app/paypal.py; this script is just the kill test around them.
 """
 import argparse
-import base64
 import json
 import os
 import sys
 import time
-import urllib.error
-import urllib.request
-import uuid
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-BASE = "https://api-m.sandbox.paypal.com"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from app.audit import load_env  # noqa: E402
+from app.paypal import (  # noqa: E402
+    PayPalError, ROOT, api_base, build_payout_batch, call, create_payout, get_payout, get_token, new_sender_batch_id,
+)
 
-def load_env():
-    env_file = ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-
-
-def call(method, path, token=None, body=None, basic=None, form=None):
-    headers = {"Accept": "application/json"}
-    data = None
-    if basic:
-        headers["Authorization"] = "Basic " + base64.b64encode(basic.encode()).decode()
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    if form is not None:
-        headers["Content-Type"] = "application/x-www-form-urlencoded"
-        data = form.encode()
-    if body is not None:
-        headers["Content-Type"] = "application/json"
-        data = json.dumps(body).encode()
-    req = urllib.request.Request(BASE + path, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return r.status, json.loads(r.read() or b"{}")
-    except urllib.error.HTTPError as e:
-        try:
-            payload = json.loads(e.read() or b"{}")
-        except json.JSONDecodeError:
-            payload = {}
-        return e.code, payload
+BASE = api_base()
 
 
 def build_batch(recipients):
     amounts = ["4200.00", "3400.00", "1350.00"]
     names = ["Priya Nair (short-paid PN-2026-044)", "Maya Chen MC-0311", "Lena Fischer LF-0092"]
-    return {
-        "sender_batch_header": {
-            "sender_batch_id": f"pg-killtest-{uuid.uuid4().hex[:10]}",
-            "email_subject": "Brightloom Studio payout",
-            "email_message": "Your weekly Brightloom payout has been sent.",
-        },
-        "items": [
-            {
-                "recipient_type": "EMAIL",
-                "receiver": email,
-                "amount": {"value": amounts[i % 3], "currency": "USD"},
-                "sender_item_id": f"item-{i + 1}",
-                "note": f"PayoutGuard kill test - {names[i % 3]}",
-            }
-            for i, email in enumerate(recipients)
-        ],
-    }
+    items = [
+        {
+            "receiver": email,
+            "amount": amounts[i % 3],
+            "sender_item_id": f"item-{i + 1}",
+            "note": f"PayoutGuard kill test - {names[i % 3]}",
+        }
+        for i, email in enumerate(recipients)
+    ]
+    # build_payout_batch honours PAYOUT_TEST_RECIPIENTS; recipients already come from there when set.
+    return build_payout_batch(items, new_sender_batch_id("pg-killtest"), email_subject="Brightloom Studio payout",
+                              email_message="Your weekly Brightloom payout has been sent.")
 
 
 def main():
@@ -98,33 +61,30 @@ def main():
     batch = build_batch(recips[:3])
 
     if args.dry_run:
-        print("DRY RUN — would POST", BASE + "/v1/payments/payouts")
+        print("DRY RUN — would POST", api_base() + "/v1/payments/payouts")
         print(json.dumps(batch, indent=2))
         return 0
 
-    cid, secret = os.environ.get("PAYPAL_CLIENT_ID"), os.environ.get("PAYPAL_CLIENT_SECRET")
-    if not cid or not secret:
-        sys.exit("Missing PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET (sandbox). Put them in .env")
-
-    st, tok = call("POST", "/v1/oauth2/token", basic=f"{cid}:{secret}", form="grant_type=client_credentials")
-    if st != 200:
-        sys.exit(f"FAIL token ({st}): {json.dumps(tok)}")
-    token = tok["access_token"]
-    print("OK  token")
-
-    st, res = call("POST", "/v1/payments/payouts", token=token, body=batch)
-    if st not in (200, 201):
-        print(f"FAIL create batch ({st}):\n{json.dumps(res, indent=2)}")
+    try:
+        token = get_token()
+        print("OK  token")
+        res = create_payout(batch, token)
+    except PayPalError as e:
+        if e.step == "token":
+            sys.exit(f"FAIL token ({e.status}): {json.dumps(e.payload)}")
+        print(f"FAIL create batch ({e.status}):\n{json.dumps(e.payload, indent=2)}")
         print("\nIf the error mentions authorization/permission: Developer Dashboard > Apps & Credentials >"
               " your sandbox app > Features > make sure 'Payouts' is ticked, then retry.")
         print("If it mentions INSUFFICIENT_FUNDS: log into the sandbox BUSINESS account and check its balance.")
         return 1
+
     batch_id = res["batch_header"]["payout_batch_id"]
     print(f"OK  batch created: {batch_id} ({res['batch_header']['batch_status']})")
 
+    status = res["batch_header"]["batch_status"]
     for _ in range(12):
         time.sleep(5)
-        st, res = call("GET", f"/v1/payments/payouts/{batch_id}", token=token)
+        res = get_payout(batch_id, token)
         status = res.get("batch_header", {}).get("batch_status")
         print(f"..  batch status: {status}")
         if status in ("SUCCESS", "DENIED", "CANCELED"):

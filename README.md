@@ -37,3 +37,38 @@ Try `--no-guardrails` to see what the AI gets right on its own. Results land in 
 | `appeals/priya_reply.eml` | Priya | PM approval dated 30 Oct → $650 top-up |
 
 Regenerate with `python tools/generate_data.py`.
+
+
+## Backend (FastAPI)
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env            # fill in the sandbox + OpenAI keys
+uvicorn app.main:app --reload --port 8000
+```
+
+`app/audit.py` holds the provider wrapper, schemas, prompts and guardrails (shared with
+`scripts/audit_test.py`); `app/paypal.py` holds the token / create-batch / get-batch calls (shared with
+`scripts/payouts_test.py`); `app/store.py` keeps run state as JSON in `runs/`.
+
+`AUDIT_MODE=live` calls the AI on a cache miss and writes the result to `out/cache/<file-hash>-<prompt-scope>.json`.
+`AUDIT_MODE=cached` never calls the AI: it reuses `out/cache`, falling back to `out/audit_results.json` from the
+kill test. `POST /api/runs/{id}/audit?force=true` is the "Re-audit live" button.
+
+### Local flow
+
+```bash
+BASE=http://localhost:8000
+RID=$(curl -s -X POST $BASE/api/runs | python -c 'import sys,json;print(json.load(sys.stdin)["run_id"])')
+curl -s -X POST $BASE/api/runs/$RID/audit | python -m json.tool          # 8 verdicts
+curl -s -X POST "$BASE/api/runs/$RID/approve?dry_run=true"               # inspect the Payouts body
+curl -s -X POST $BASE/api/runs/$RID/approve                              # sends ONE real sandbox batch
+curl -s "$BASE/api/runs/$RID?refresh=1"                                  # re-poll item statuses
+curl -s -X POST $BASE/api/reset                                          # new run, new sender_batch_id
+```
+
+### Tests
+
+```bash
+pytest -q        # guardrails + Payouts request body, no network
+```
