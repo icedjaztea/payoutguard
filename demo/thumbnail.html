@@ -1,0 +1,129 @@
+<!doctype html>
+<!-- Devpost gallery thumbnail, rendered to submission/thumbnail.png by demo/thumbnail.py.
+     The panel on the right is the real product screenshot, not a mock-up. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a1024;
+    --blue: #1763ff;
+    --mint: #2fd18c;
+    --amber: #ffb547;
+    --paper: #f4f6fb;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px; height: 675px; overflow: hidden;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    background: var(--ink);
+    color: #fff;
+    position: relative;
+  }
+  .glow {
+    position: absolute; inset: -30% -10% auto -25%; height: 130%;
+    background: radial-gradient(60% 55% at 22% 38%, rgba(23,99,255,.55), transparent 70%),
+                radial-gradient(45% 40% at 78% 85%, rgba(47,209,140,.22), transparent 70%);
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(105deg, #000 35%, transparent 72%);
+  }
+  .wrap { position: relative; height: 100%; display: grid; grid-template-columns: 600px 1fr; }
+  .left { padding: 52px 0 46px 58px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { width: 34px; height: 34px; }
+  .brand b { font-size: 29px; font-weight: 700; letter-spacing: -.02em; }
+  .chip {
+    margin-left: 6px; font-size: 12px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: #9fc0ff;
+    border: 1px solid rgba(159,192,255,.38); border-radius: 999px; padding: 5px 11px;
+  }
+  h1 {
+    margin-top: 34px; font-size: 50px; line-height: 1.07; font-weight: 700; letter-spacing: -.025em;
+  }
+  h1 em { font-style: normal; color: #76a6ff; }
+  p.tag { margin-top: 20px; font-size: 20px; line-height: 1.45; color: #b9c4de; max-width: 500px; }
+  .stats { margin-top: auto; display: flex; gap: 12px; }
+  .stat {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 13px; padding: 13px 16px; backdrop-filter: blur(4px);
+  }
+  .stat span { display: block; font-size: 12.5px; color: #93a2c2; letter-spacing: .02em; }
+  .stat strong { display: block; margin-top: 4px; font-size: 25px; letter-spacing: -.02em; }
+  .stat.stop strong { color: var(--amber); }
+  .stat.back strong { color: var(--mint); }
+  .foot {
+    margin-top: 22px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;
+    color: #8c9ab8; letter-spacing: .01em;
+  }
+  .right { position: relative; overflow: hidden; }
+  /* The whole tray fits at this width, so the top-up batch - the point of the story - is in frame
+     and nothing is cut off mid-sentence. */
+  .shot {
+    position: absolute; top: 26px; left: 150px; width: 382px;
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.1);
+    transform: rotate(-1.4deg);
+  }
+  .shot img { display: block; width: 100%; }
+  .badge {
+    position: absolute; left: 0; bottom: 22px; width: 392px;
+    background: #fff; color: var(--ink); border-radius: 14px; padding: 15px 18px;
+    box-shadow: 0 26px 60px rgba(0,0,0,.5);
+    transform: rotate(-1.4deg);
+    display: flex; align-items: center; gap: 14px;
+  }
+  .badge .dot {
+    width: 36px; height: 36px; border-radius: 50%; flex: none;
+    background: rgba(23,99,255,.12); color: var(--blue);
+    display: grid; place-items: center; font-size: 19px; font-weight: 700;
+  }
+  .badge b { display: block; font-size: 16px; letter-spacing: -.01em; }
+  .badge small { display: block; margin-top: 2px; font-size: 13.5px; color: #5b6782; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="grid"></div>
+  <div class="wrap">
+    <div class="left">
+      <div class="brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#4d8dff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+        <b>PayoutGuard</b>
+        <span class="chip">PayPal Payouts</span>
+      </div>
+
+      <h1>Stops the wrong payout<br><em>before it leaves.</em></h1>
+      <p class="tag">AI audits every contractor invoice against the contract, the payee list and the payment history — then releases the money it withheld when the contractor proves it wrong.</p>
+
+      <div class="stats">
+        <div class="stat"><span>Audited</span><strong>8 invoices</strong></div>
+        <div class="stat stop"><span>Stopped</span><strong>$11,490</strong></div>
+        <div class="stat back"><span>Released on appeal</span><strong>$650</strong></div>
+      </div>
+      <div class="foot">OpenAI · PayPal Payouts · Webhooks · synthetic data, PayPal sandbox</div>
+    </div>
+
+    <div class="right">
+      <div class="shot"><img src="../submission/4-tray-after-top-up.png" alt=""></div>
+      <div class="badge">
+        <span class="dot">!</span>
+        <div>
+          <b>Payee changed by email · quarantined</b>
+          <small>look-alike domain, no change request on file — clause 5</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
