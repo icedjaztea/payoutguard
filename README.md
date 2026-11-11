@@ -1,138 +1,180 @@
-# PayoutGuard — kill-test kit
+# PayoutGuard
 
-Two tests to run **tonight** before building anything. If both pass, hand `BUILD_SPEC.md` to Claude Code / Codex.
+**PayPal moves the money. PayoutGuard makes sure it's the right amount, to the right person, before it leaves.**
 
-## 0. Setup (5 min)
-```bash
-cp .env.example .env          # fill in sandbox PayPal creds + OpenAI key
-pip install -r requirements.txt
+An AI audit layer in front of **PayPal Payouts**: it reads every contractor invoice against the
+contract, the payee list and the payment history, holds the bad ones, pays the good ones in one
+batch — and releases the money it withheld when the contractor proves it wrong.
+
+| | |
+|---|---|
+| **Live demo** | **https://payoutguard.onrender.com/** |
+| **Video (2:42)** | **https://www.youtube.com/watch?v=5cDUmkLy9sM** |
+| **Licence** | MIT |
+
+> ⏱️ **The demo sleeps.** It runs on Render's free tier, so the first page load can take
+> **up to a minute** to wake. Open it, let it load once, and everything after that is instant.
+
+**The 60-second path:** open the demo → **Audit this week's run** → read the three red/amber cards →
+**Approve & pay with PayPal** (real sandbox batch, ids appear in the tray) → when the items turn
+SUCCESS, **Review evidence** on Priya's reply → a second batch sends her $650 top-up.
+**Reset** (top right) puts it back for the next person.
+
+---
+
+## The problem
+
+Platforms and agencies pay contractors in bulk every week. Two things go wrong, and both are
+well measured:
+
+- **Money leaks on ordinary mistakes.** APQC's Open Standards Benchmarking puts the median
+  organisation at **1.5% of disbursements going out as duplicate or erroneous payments**
+  (measure 105905, n=1,686) — [APQC][apqc]. Top performers still run ~0.8% and bottom performers
+  ~2.0% — [CFO.com, citing APQC][cfo].
+- **Payee details get hijacked.** The FBI's 2025 Internet Crime Report records **24,768 business
+  email compromise complaints and $3.05 billion in losses** in 2025 alone, the second-largest
+  category after investment fraud — [IC3 2025 Internet Crime Report (PDF)][ic3]. The classic BEC is
+  exactly this: an email asking you to pay the usual invoice to a new account.
+
+Approvals happen in bulk, so nobody re-reads the contract for a $650 line item — and nobody
+notices that one payee email changed. PayoutGuard reads all of it, every run.
+
+## This week's run
+
+Eight files land in the inbox with the filenames real contractors actually send
+(`scan_0042.pdf`, `IMG_1234.jpg`, `Document (3).pdf`). $25,580 billed:
+
+| Invoice | Contractor | Billed | Verdict | Paid | Why |
+|---|---|---:|---|---:|---|
+| `invoice.pdf` | Tom Okafor | $9,400 | **Payee quarantined** | $0 | Payment redirected by email to a look-alike domain, no change request on file (cl. 5) |
+| `Document (3).pdf` | Diego Ramos | $1,440 | **Duplicate hold** | $0 | Same October blog series already paid 30 Oct as INV-117, re-numbered INV-0117 (cl. 3) |
+| `scan_0042.pdf` | Priya Nair | $4,850 | **Short pay** | $4,200 | $650 rush surcharge has no written PM pre-approval (cl. 4.3) |
+| 5 others | — | $9,890 | **Pay in full** | $9,890 | Rate, hours, cap, payee and arithmetic all check out |
+
+**$14,090 paid in one PayPal Payouts batch. $11,490 stopped.**
+
+Then Priya replies with her PM's written approval, **dated before the work**. The appeal check
+re-reads clause 4.3, accepts it, and sends a **$650 top-up** as a second batch. Protected: **$10,840**.
+The agent is fair in both directions — not a blocker, an auditor.
+
+## How it works
+
+```mermaid
+flowchart LR
+  I["data/inbox<br/>8 PDFs + photos"] --> AI["OpenAI audit<br/>structured verdict per invoice"]
+  CTX["contract · rate card<br/>vendor master · payout history · AP inbox"] --> AI
+  AI --> G["Deterministic rule checks<br/>(can only raise severity)"]
+  G --> H{"Human approves"}
+  H -->|"PAY + SHORT_PAY only"| B["POST /v1/payments/payouts<br/>one batch, remittance note per item"]
+  B --> S["Webhooks (signature-verified)<br/>+ 5s polling fallback"]
+  S --> C["Counters: billed / paying / stopped"]
+  R["Contractor reply (.eml)"] --> A["Appeal check vs clause 4.3"]
+  A -->|"TOP_UP"| T["Second 1-item batch<br/>$650"]
+  T --> S
 ```
 
-## 1. PayPal Payouts in sandbox (~20 min)
-```bash
-python scripts/payouts_test.py --dry-run   # see the request
-python scripts/payouts_test.py             # real sandbox batch, polls until done
-```
-PASS = batch `SUCCESS`, items `SUCCESS` or `UNCLAIMED`.
-`UNCLAIMED` only means no sandbox account exists for that email yet. For the demo, create sandbox **personal** accounts
-(Developer Dashboard → Testing Tools → Sandbox Accounts → Create account) using the emails in `data/vendor_master.json`,
-or put your own sandbox personal emails in `PAYOUT_TEST_RECIPIENTS`.
+Nothing moves without the human click, and the rule checks can only make a verdict *stricter* —
+the AI can never talk the system into paying more than the deterministic layer allows.
 
-## 2. AI audit (~20 min)
-```bash
-python scripts/audit_test.py                    # OpenAI (default)
-python scripts/audit_test.py --provider gemini  # backup, optional
-```
-PASS = `Score: 8/8` and appeal `TOP_UP 650`. Run it 3 times; it must be stable.
-Try `--no-guardrails` to see what the AI gets right on its own. Results land in `out/audit_results.json`
-(Codex can build the UI against that file).
-
-## Data (all fictional)
-| File | Contractor | Trap |
+| Audit verdicts | Evidence for the quarantined payee | Payout tray after the top-up |
 |---|---|---|
-| `scan_0042.pdf` | Priya Nair | $650 rush surcharge without PM pre-approval → short-pay $4,200 |
-| `Document (3).pdf` | Diego Ramos | Re-numbered duplicate of INV-117 (paid 30 Oct) |
-| `invoice.pdf` + `RE_ payment details update.eml` | Tom Okafor | Payee change to look-alike domain, $9,400 |
-| 5 others (2 are phone photos) | — | Clean |
-| `appeals/priya_reply.eml` | Priya | PM approval dated 30 Oct → $650 top-up |
+| ![Audit verdicts](submission/2-verdict-cards.png) | ![Evidence drawer](submission/3-scam-evidence-drawer.png) | ![Payout tray](submission/4-tray-after-top-up.png) |
 
-Regenerate with `python tools/generate_data.py`.
+## PayPal APIs used
 
+All called directly over `urllib` — no SDK — in [`app/paypal.py`](app/paypal.py).
 
-## Backend (FastAPI)
+| API | Where | What for |
+|---|---|---|
+| `POST /v1/oauth2/token` | `get_token()` | OAuth2 client-credentials, token cached until expiry |
+| `POST /v1/payments/payouts` | `create_payout()` | The batch: PAY + SHORT_PAY items only, fresh `sender_batch_id` per run, each item's `note` is its remittance note |
+| `GET /v1/payments/payouts/{id}` | `get_payout()` | Polled every 5s in a background thread until the batch is final |
+| `POST /v1/notifications/webhooks` | `ensure_webhook()` | Find-or-create the sandbox webhook for `<host>/webhooks/paypal` at startup |
+| `GET /v1/notifications/webhooks` | `list_webhooks()` | So a redeploy reuses the existing webhook instead of duplicating it |
+| `POST /v1/notifications/verify-webhook-signature` | `verify_webhook_signature()` | Every inbound event is verified; an unverifiable event is refused with 400 and changes nothing |
+
+Twelve `PAYMENT.PAYOUTSBATCH.*` and `PAYMENT.PAYOUTS-ITEM.*` event types update item status live.
+Polling is the fallback, so the UI is correct even if a webhook never arrives.
+
+## The AI
+
+| | |
+|---|---|
+| **Model** | `gpt-6.1-sol` (set by `OPENAI_MODEL`; a `gemini` provider is kept as a backup path) |
+| **API** | OpenAI **Responses API**, `client.responses.parse` with Pydantic `text_format` — **structured outputs**, so a verdict is a typed object, never prose to be parsed |
+| **Multimodal** | PDFs go in as `input_file`, phone photos of invoices as `input_image` — no OCR step |
+| **Context** | Contract terms, Schedule A rate card, vendor master, 90 days of payout history and the AP inbox are given as context, so findings cite a clause and quote evidence |
+| **Guardrails** | Deterministic checks in `guardrails()` — payee ≠ vendor master, duplicate (same amount + work already paid), line-sum ≠ total — raise severity along `PAY → SHORT_PAY → HOLD_REVIEW → HOLD_DUPLICATE → QUARANTINE_PAYEE`. **They can only escalate, never downgrade.** The UI labels them "Rule check" against the AI's "AI finding" |
+| **Caching** | Per-file-hash cache (`out/cache/`) plus a committed `data/audit_cache.json` seeded from a live run that scored 8/8 against `data/expected_labels.json`, so the hosted demo is fast and identical every time. `AUDIT_MODE=live` always calls the model |
+
+## Real vs synthetic
+
+**Real:** every PayPal call above, against the **PayPal sandbox** — real OAuth, real batch ids you
+can look up in the Developer Dashboard, real item statuses, real signature-verified webhooks. Real
+OpenAI calls (the committed cache is the recording of one).
+
+**Synthetic:** Brightloom Studio, all eight contractors, their invoices, the contract, the payout
+history, the AP inbox and Priya's reply are fictional and generated for this project. The
+look-alike domain is invented. Sandbox money is not money — **no real funds move anywhere**.
+
+## Run it locally
 
 ```bash
-pip install -r requirements.txt
-cp .env.example .env            # fill in the sandbox + OpenAI keys
+git clone https://github.com/icedjaztea/payoutguard.git && cd payoutguard
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env          # add sandbox PayPal creds + your OpenAI key
 uvicorn app.main:app --reload --port 8000
 ```
 
-`app/audit.py` holds the provider wrapper, schemas, prompts and guardrails (shared with
-`scripts/audit_test.py`); `app/paypal.py` holds the token / create-batch / get-batch calls (shared with
-`scripts/payouts_test.py`); `app/store.py` keeps run state as JSON in `runs/`.
-
-`AUDIT_MODE=cached` (the default) serves a cached verdict when there is one and otherwise calls the AI and caches
-it; `AUDIT_MODE=live` always calls the AI. Lookup order: `out/cache/<file-hash>-<prompt-scope>.json`, then the
-committed `data/audit_cache.json` (keyed by file hash), then the AI. `POST /api/runs/{id}/audit?force=true` is the
-"Re-audit live" button.
-
-`data/audit_cache.json` is committed so a fresh deploy answers instantly with the verdicts we tested. Re-seed it
-after changing a prompt or model — it only writes when all 8 invoices match `data/expected_labels.json` and the
-appeal returns TOP_UP 650:
+Open http://localhost:8000. With `AUDIT_MODE=cached` (the default) the audit replays the committed
+cache and needs no OpenAI key; approving still sends a real sandbox batch, so PayPal credentials are
+required for that half.
 
 ```bash
-python tools/seed_cache.py            # one live run, then write the committed cache
-python tools/seed_cache.py --dry-run  # score only
+pytest -q                                   # 117 tests, no network
+python scripts/audit_test.py                # the audit on its own -> Score: 8/8, appeal TOP_UP 650
+python scripts/payouts_test.py --dry-run    # the Payouts request body, no call
+docker build -t payoutguard . && docker run -p 8000:8000 --env-file .env payoutguard
 ```
 
-`GET /api/runs/current` returns the active run, creating one from `data/inbox` if there is none, and `web/dist` is
-served at `/` with an SPA fallback when it has been built (`cd web && npm run build`). CORS is open to
-`localhost:5173` for `npm run dev`.
+Deployment is [`render.yaml`](render.yaml) (one free web service, health check `/api/health`,
+secrets left as dashboard values). `GET /api/health` reports the audit mode, the PayPal base URL,
+the registered webhook id and the deployed commit.
 
-### Deploy
+### See the money land
 
-`render.yaml` describes one free Docker web service with health check `/api/health`, `AUDIT_MODE=cached`, and
-`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `OPENAI_API_KEY`, `OPENAI_MODEL` left as dashboard secrets
-(`sync: false`). The `Dockerfile` builds `web/` in a Node stage when it is present, then runs
-`uvicorn app.main:app` on `$PORT`.
+The payouts are real sandbox transactions, so you can watch one arrive. Priya is the interesting
+one — she is paid twice, $4,200 in the main batch and $650 after her appeal:
 
-### Local flow
+1. Sign in at **https://www.sandbox.paypal.com/** with the sandbox personal account:
+   - **Email:** `priya.nair.brightloom@personal.example.com`
+   - **Password:** `<sandbox password — see the Devpost submission notes>`
+2. Her activity shows both payments from Brightloom Studio, with the remittance note on each.
 
-```bash
-BASE=http://localhost:8000
-RID=$(curl -s -X POST $BASE/api/runs | python -c 'import sys,json;print(json.load(sys.stdin)["run_id"])')
-curl -s -X POST $BASE/api/runs/$RID/audit | python -m json.tool          # 8 verdicts
-curl -s -X POST "$BASE/api/runs/$RID/approve?dry_run=true"               # inspect the Payouts body
-curl -s -X POST $BASE/api/runs/$RID/approve                              # sends ONE real sandbox batch
-curl -s "$BASE/api/runs/$RID?refresh=1"                                  # re-poll item statuses
-curl -s -X POST "$BASE/api/runs/$RID/appeals/scan_0042.pdf?dry_run=true"  # appeal decision only
-curl -s -X POST $BASE/api/runs/$RID/appeals/scan_0042.pdf                # TOP_UP -> second batch
-curl -s -X POST $BASE/api/reset                                          # new run, new sender_batch_id
-```
+The batch ids shown in the payout tray can also be looked up directly in the
+[Developer Dashboard](https://developer.paypal.com/dashboard/) under the sandbox account's activity.
 
-### Appeal loop
+## AI tools used to build this
 
-`POST /api/runs/{id}/appeals/{invoice-file}` re-checks a `SHORT_PAY` invoice against the contractor's reply in
-`data/appeals/` (matched by contractor name, or name one with `?appeal_file=`). On `TOP_UP` it sends a second,
-one-item Payouts batch for the withheld amount — capped at what was actually withheld — and the run's
-`totals.protected` drops accordingly. `?dry_run=true` decides without sending. The run must have been approved
-first, and a topped-up invoice cannot be appealed twice.
+Disclosed in full, as the rules ask:
 
-### Webhooks
+- **Claude Code** (Anthropic) and **Codex** (OpenAI) as coding assistants, for the backend, the
+  frontend and the tests. Commits co-authored by them are marked as such.
+- **`ui-ux-pro-max` skill** for the interface design and the logo/brand marks.
+- **[DemoTape](https://github.com/gabosarmiento/demotape)** to script, record and self-verify the
+  demo video: each scene asserts a real DOM condition at record time, then a vision model checks
+  the frame against the narration. The config and the spoken script are committed in
+  [`demo/`](demo/). Narration was synthesized with **Kokoro** running locally through an
+  OpenAI-compatible endpoint; the burned-in subtitles were transcribed with **OpenAI Whisper**
+  (two mishearings corrected by hand, see [`submission/payoutguard_demo.srt`](submission/)).
+- The product itself uses OpenAI at runtime, as described above.
 
-`POST /webhooks/paypal` takes `PAYMENT.PAYOUTSBATCH.*` and `PAYMENT.PAYOUTS-ITEM.*` events and updates the stored
-item/batch status for the main batch and any top-up batch. Register the URL at Developer Dashboard > your sandbox
-app > Features > Sandbox Webhooks and put the webhook id in `PAYPAL_WEBHOOK_ID`: every event is then verified with
-`/v1/notifications/verify-webhook-signature` and a failure changes nothing. Without that id an event cannot be
-verified and is refused with 400 unless `PAYPAL_ALLOW_UNVERIFIED_WEBHOOKS=1` is set for local testing.
-After any batch is created the server also polls `GET /v1/payments/payouts/{id}` every 5 s in a background thread
-until the batch is final, so item statuses tick over even with no webhook registered; `GET /api/runs/{id}?refresh=1`
-forces a re-read, and `GET /api/health` lists the batches currently being polled. On startup, if `PUBLIC_BASE_URL`
-or `RENDER_EXTERNAL_URL` is set, the server finds-or-creates the sandbox webhook for `<url>/webhooks/paypal` over
-the PayPal API and keeps its id in memory; any failure there is logged and polling carries the demo.
+## Licence
 
-### Tests
+[MIT](LICENSE). The repository contains no credentials; `.env` is git-ignored and
+[`.env.example`](.env.example) lists only variable names.
 
-```bash
-pip install -r requirements-dev.txt
-pytest -q        # guardrails, Payouts body, appeal loop, webhooks — no network
-```
-
-### Browser end-to-end
-
-Drives the real UI through reset → audit → approve → appeal with Playwright, checking the
-`data-testid` hooks, the counters and both PayPal batch ids. It sends two real sandbox batches.
-
-```bash
-playwright install chromium
-cd web && npm run build && cd ..
-uvicorn app.main:app --port 8000 &
-python tools/e2e_browser.py --base http://localhost:8000     # --headed to watch, screenshots in out/e2e/
-```
-
-### Docker
-
-```bash
-docker build -t payoutguard:local .
-docker run --rm -p 8200:8200 -e PORT=8200 --env-file .env payoutguard:local
-```
+[apqc]: https://www.apqc.org/resources/benchmarking/open-standards-benchmarking/measures/percentage-total-annual-number
+[cfo]: https://www.cfo.com/news/metric-of-the-month-detect-and-prevent-duplicate-or-erroneous-payments/656852/
+[ic3]: https://www.ic3.gov/AnnualReport/Reports/2025_IC3Report.pdf
