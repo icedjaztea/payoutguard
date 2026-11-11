@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8
+httpx>=0.27
+# browser end-to-end run (tools/e2e_browser.py):
+#   pip install -r requirements-dev.txt && playwright install chromium
+playwright>=1.47

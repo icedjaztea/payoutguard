@@ -31,5 +31,5 @@ COPY --from=web /src/web/dist ./web/dist
 RUN mkdir -p runs out/cache
 
 EXPOSE 8000
-# $PORT is set by the host (Render); the shell form expands it.
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# $PORT is set by the host (Render); sh expands it, exec keeps uvicorn as PID 1 for signals.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

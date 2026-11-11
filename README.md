@@ -114,5 +114,25 @@ the PayPal API and keeps its id in memory; any failure there is logged and polli
 ### Tests
 
 ```bash
+pip install -r requirements-dev.txt
 pytest -q        # guardrails, Payouts body, appeal loop, webhooks — no network
+```
+
+### Browser end-to-end
+
+Drives the real UI through reset → audit → approve → appeal with Playwright, checking the
+`data-testid` hooks, the counters and both PayPal batch ids. It sends two real sandbox batches.
+
+```bash
+playwright install chromium
+cd web && npm run build && cd ..
+uvicorn app.main:app --port 8000 &
+python tools/e2e_browser.py --base http://localhost:8000     # --headed to watch, screenshots in out/e2e/
+```
+
+### Docker
+
+```bash
+docker build -t payoutguard:local .
+docker run --rm -p 8200:8200 -e PORT=8200 --env-file .env payoutguard:local
 ```
