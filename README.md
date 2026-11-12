@@ -144,13 +144,18 @@ the registered webhook id and the deployed commit.
 
 ### See the money land
 
-The payouts are real sandbox transactions, so you can watch one arrive. Priya is the interesting
-one — she is paid twice, $4,200 in the main batch and $650 after her appeal:
+The payouts are real sandbox transactions, so you can watch them arrive. Sign in at
+**https://www.sandbox.paypal.com/** as either contractor — both are PayPal **sandbox personal
+accounts**, so there is no real identity or real money behind them:
 
-1. Sign in at **https://www.sandbox.paypal.com/** with the sandbox personal account:
-   - **Email:** `priya.nair.brightloom@personal.example.com`
-   - **Password:** `Brightl00m!26`
-2. Her activity shows both payments from Brightloom Studio, with the remittance note on each.
+| Contractor | Sandbox email | Password | What you'll see |
+|---|---|---|---|
+| **Priya Nair** (short-paid, then appealed) | `priya.nair.brightloom@personal.example.com` | `Brightl00m!26` | **Two** payments: $4,200 from the main batch, then $650 once her PM's approval was accepted |
+| **Maya Chen** (passed cleanly) | `maya.chen.brightloom@personal.example.com` | `Brightl00m!26` | One payment for the full invoice — the ordinary case, for contrast |
+
+Each payment carries its own remittance note, written by the audit, so the contractor can see
+exactly which clause decided the amount. Tom and Diego have no activity to show — that is the
+point: their money never left.
 
 The batch ids shown in the payout tray can also be looked up directly in the
 [Developer Dashboard](https://developer.paypal.com/dashboard/) under the sandbox account's activity.
