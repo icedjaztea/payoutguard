@@ -149,7 +149,7 @@ one — she is paid twice, $4,200 in the main batch and $650 after her appeal:
 
 1. Sign in at **https://www.sandbox.paypal.com/** with the sandbox personal account:
    - **Email:** `priya.nair.brightloom@personal.example.com`
-   - **Password:** `<sandbox password — see the Devpost submission notes>`
+   - **Password:** `Brightl00m!26`
 2. Her activity shows both payments from Brightloom Studio, with the remittance note on each.
 
 The batch ids shown in the payout tray can also be looked up directly in the
