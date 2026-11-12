@@ -190,3 +190,15 @@ h1 { font-size: 30px; line-height: 40px; font-weight: 600; letter-spacing: -1px;
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Shown between the batch going out and Priya's reply arriving, so the tray never
+   looks like the end of the story while it is still waiting on PayPal. */
+.batch-wait {
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  border: 1px dashed var(--line, rgba(255, 255, 255, .14));
+  border-radius: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--muted, #8c9ab8);
+}

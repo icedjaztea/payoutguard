@@ -171,9 +171,9 @@ function App() {
       } catch (cause) {
         if (active) setError(errorText(cause))
       }
-      if (active) timer = window.setTimeout(refresh, 2000)
+      if (active) timer = window.setTimeout(refresh, 1200)
     }
-    timer = window.setTimeout(refresh, 2000)
+    timer = window.setTimeout(refresh, 1200)
     return () => { active = false; clearTimeout(timer) }
   }, [id, poll, action])
 
@@ -250,7 +250,10 @@ function App() {
   const topUp = run?.top_up_batch?.items.filter(item => item.status === 'SUCCESS').reduce((sum, item) => sum + item.amount, 0) ?? 0
   const protectedAmount = settled(run?.batch) ? stopped - topUp : 0
   const paidReplyInvoice = run?.batch?.items.some(item => item.file === replyFile && item.status === 'SUCCESS')
-  const replyReady = Boolean(run?.batch?.items.length && run.batch.items.every(item => item.status === 'SUCCESS') && paidReplyInvoice && !run?.appeal)
+  // Priya replies about her own short payment, so her item landing is the only
+  // precondition. Waiting for every item meant one slow or unclaimed payee could
+  // hold the reply back indefinitely.
+  const replyReady = Boolean(paidReplyInvoice && !run?.appeal)
   const paidCount = run?.batch?.items.filter(item => item.status === 'SUCCESS').length ?? 0
   const payables = visible.filter(v => v.approved_amount > 0).length
   const exceptions = visible.filter(v => v.decision !== 'PAY').length
@@ -334,6 +337,7 @@ function App() {
           {run?.batch ? <div className="batch-body">
             <div className="batch-summary"><div><span>Initial payout</span><strong>{money(run.batch.items.reduce((sum, item) => sum + item.amount, 0))}</strong></div><span className="completion">{paidCount}/{run.batch.items.length} sent</span></div>
             <BatchList batch={run.batch} />
+            {!replyReady && !run.appeal && !paidReplyInvoice && <p className="batch-wait" role="status">Waiting on PayPal to confirm Priya’s reduced payment. Her reply, with the written approval, arrives here next.</p>}
             {replyReady && <button data-testid="review-reply-tray" className="reply-button" onClick={reviewReply} disabled={Boolean(action)}><Mail size={16} /> {action === 'appeal' ? 'Checking approval…' : 'Review evidence'}<ArrowRight size={15} /></button>}
             {run.appeal && <div className="appeal">
               <div className="appeal-heading"><Mail size={16} /><strong>Priya’s appeal</strong>{run.appeal.clause && <span>Clause {run.appeal.clause}</span>}</div>
